@@ -1,35 +1,6 @@
-const categories = [
-    {
-      name: "Technology",
-      stories: [
-        "AI beats doctors in early cancer detection",
-        "Open-source projects dominate 2025 tools",
-      ],
-    },
-    {
-      name: "Sports",
-      stories: [
-        "Champions League final ends in upset",
-        "Olympics prep ramps up in Paris",
-      ],
-    },
-    {
-      name: "Science",
-      stories: [
-        "James Webb finds Earth-like planet",
-        "Fusion energy shows breakthrough progress",
-      ],
-    },
-    {
-      name: "Culture",
-      stories: [
-        "Film industry eyes global streaming deals",
-        "Broadway sees a record-breaking revival",
-      ],
-    },
-  ];
+
   
-  export default function CategoryGrid() {
+  export default function CategoryGrid({categories}) {
     return (
       <section className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -1,19 +1,6 @@
-const stories = [
-    {
-      title: "Tech Giants Face New EU Regulations",
-      summary: "The European Union unveils stricter digital laws targeting monopoly behavior.",
-    },
-    {
-      title: "NASA Plans New Moon Mission",
-      summary: "The Artemis program aims to send humans back to the Moon by 2026.",
-    },
-    {
-      title: "Climate Talks Stall at Summit",
-      summary: "Disagreements over emission cuts cause delays in international climate agreements.",
-    },
-  ];
+
   
-  export default function SecondaryStories() {
+  export default function SecondaryStories({stories}) {
     return (
       <section className="max-w-7xl mx-auto px-4 py-6">
         <h3 className="text-xl font-bold mb-4 border-b pb-2">More Stories</h3>

@@ -8,10 +8,10 @@ export default function Header() {
   const navItems = ["World", "Politics", "Tech", "Science", "Sports", "Culture"];
 
   return (
-    <header className="w-full border-b border-gray-300">
+    <header className="w-full border-b-2 border-[#211C84] ">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-serif font-bold tracking-widest">The Daily Times</h1>
+          <h1 className="text-3xl font-serif font-bold tracking-widest text-[#211C84]">The Daily Times</h1>
           <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -23,7 +23,7 @@ export default function Header() {
             <a
               key={item}
               href={`/${item.toLowerCase()}`}
-              className="hover:underline"
+              className="hover:underline "
             >
               {item}
             </a>
