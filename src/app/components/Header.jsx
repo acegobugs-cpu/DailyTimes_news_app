@@ -1,24 +1,14 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Menu, X} from 'lucide-react';
-import {HeaderSearchBar} from './SearchBar';
+import {HeaderSearchBar, useSearch} from './SearchBar';
 
-export default function Header({ searchTerm, setSearchTerm }) {
+export default function Header({sections}) {
+  const { searchValue } = useSearch();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(200);
-  const navItems = ["World", "Politics", "Tech", "Science", "Sports", "Culture"];
   const sidePanelRef = useRef(null);
-
-  // Disable/enable scrolling when mobile menu is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => document.body.classList.remove('overflow-hidden');
-  }, [isOpen]);
 
   // Close side panel when clicking outside
   useEffect(() => {
@@ -38,7 +28,9 @@ export default function Header({ searchTerm, setSearchTerm }) {
       const currentScrollY = window.scrollY;
       if (currentScrollY > lastScrollY && currentScrollY > 400) {
         setIsScrolledDown(true);
-      } else if (currentScrollY < lastScrollY) {
+      } else if (currentScrollY < 400) {
+        setIsScrolledDown(false);
+      } else if (currentScrollY < lastScrollY && searchValue.trim() === '') {
         setIsScrolledDown(false);
       }
       setLastScrollY(currentScrollY);
@@ -62,9 +54,9 @@ export default function Header({ searchTerm, setSearchTerm }) {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex justify-center mt-4 space-x-6 text-sm uppercase font-medium text-gray-700">
-          {navItems.map((item) => (
-            <a key={item} href={`/${item.toLowerCase()}`} className="hover:underline">
-              {item}
+          {sections.map((item) => (
+            <a key={item.name} href={item.path} className="hover:underline">
+              {item.name}
             </a>
           ))}
         </nav>
@@ -73,7 +65,7 @@ export default function Header({ searchTerm, setSearchTerm }) {
       {/* Mobile nav */}
       <nav
         ref={sidePanelRef}
-        className={`md:hidden fixed top-0 right-0 h-full w-48 bg-[#ededed] border-l border-[#211C84] shadow-lg z-40 transform transition-transform duration-300 ${
+        className={`md:hidden fixed top-0 right-0 h-screen w-48 bg-[#ededed] border-l border-[#211C84] shadow-lg z-40 transform transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -84,9 +76,9 @@ export default function Header({ searchTerm, setSearchTerm }) {
           <X size={24} />
         </button>
         <div className="flex flex-col space-y-6 p-4 pt-12 text-sm uppercase font-medium text-gray-700">
-          {navItems.map((item) => (
-            <a key={item} href={`/${item.toLowerCase()}`} className="block hover:underline border-b border-gray-300">
-              {item}
+          {sections.map((item) => (
+            <a key={item.name} href={item.path} className="hover:underline">
+              {item.name}
             </a>
           ))}
         </div>
@@ -102,15 +94,11 @@ export default function Header({ searchTerm, setSearchTerm }) {
           The Daily Times
         </h1>
         <div className='flex justify-between'>
-        {navItems.map((item) => (
-          <a
-            key={item}
-            href={`/${item.toLowerCase()}`}
-            className="hover:underline text-center"
-          >
-            {item}
-          </a>
-        ))}
+        {sections.map((item) => (
+            <a key={item.name} href={item.path} className="hover:underline text-center">
+              {item.name}
+            </a>
+          ))}
         </div>
         <div className="col-span-1"></div> {/* Spacer */}
         <HeaderSearchBar />

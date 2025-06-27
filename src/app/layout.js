@@ -1,8 +1,9 @@
 'use client';
-import { SearchProvider } from './components/SearchBar';
+import { SearchProvider, MainSearchBar, SearchResults, useSearch  } from './components/SearchBar';
 import { Geist, Geist_Mono } from "next/font/google";
 import Header from './components/Header';
 import Footer from "./components/Footer";
+import { categories, articles } from './data/articles';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,8 +26,10 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <SearchProvider>
-          <Header />
+          <Header sections={categories}/>
           <main>
+            <MainSearchBar />
+            <SearchResults searchTerm={useSearch.searchValue} articles={articles} />
             {children}
           </main>
           <Footer />

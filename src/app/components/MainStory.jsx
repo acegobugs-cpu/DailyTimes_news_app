@@ -1,13 +1,11 @@
 'use client';
 export default function MainStory({ stories }) {
-  const topArticles = stories
-    .filter((article) => ['breaking news', 'trending', 'primary'].includes(article.priority))
+  const topArticles = stories.filter((article) => ['breaking news', 'trending', 'primary'].includes(article.priority))
     .sort((a, b) => {
       const order = { 'breaking news': 1, trending: 2, primary: 3 };
       return order[a.priority] - order[b.priority];
     });
 
-  // Filter secondary
   const secondaryArticles = stories.filter((article) => article.priority === 'secondary');
 
   return ( 
@@ -38,13 +36,14 @@ export default function MainStory({ stories }) {
               className="w-full h-auto object-cover rounded max-h-64 md:max-h-96"
             />
             <div className="flex flex-col justify-center">
-              <p className="text-xs md:text-sm text-gray-500">{story.category}</p>
+              <p className="text-xs md:text-sm text-gray-500">{story.category.join(', ')}</p>
               <h2 className="text-lg md:text-3xl font-serif font-bold mb-4">{story.title}</h2>
               <p className="text-sm md:text-base text-gray-700">{story.description}</p>
             </div>
           </article>
         ))}
       </div>
+      
       {/* Secondary Section */}
       <div className="md:col-span-1 md:order-1 md:border-r md:border-[#211C84] px-2 md:px-4">
         {secondaryArticles.map((story) => (
@@ -55,7 +54,7 @@ export default function MainStory({ stories }) {
               className="w-full h-auto object-cover rounded max-h-48 md:max-h-64"
             />
             <div className="flex flex-col justify-center">
-              <p className="text-xs md:text-sm text-gray-500">{story.category}</p>
+              <p className="text-xs md:text-sm text-gray-500">{story.category.join(', ')}</p>
               <h2 className="text-base md:text-xl font-serif font-bold mb-4">{story.title}</h2>
               <p className="text-sm md:text-base text-gray-700">{story.description}</p>
             </div>

@@ -62,6 +62,7 @@ export function HeaderSearchBar() {
           type="text"
           value={searchValue}
           onChange={handleChange}
+          onKeyDown={(e) => e.key === 'Enter' && window.scrollTo({ top: 0, behavior: 'smooth' })}
           placeholder="Search articles..."
           className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#211C84]"
         />
@@ -69,6 +70,35 @@ export function HeaderSearchBar() {
       <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-2 text-[#211C84] hover:text-gray-700 transition-colors">
         <Search size={24} />
       </button>
+    </div>
+  );
+}
+
+export function SearchResults({ articles }) {
+  const { searchValue } = useSearch();
+
+  if (!searchValue) return null;
+
+  const filteredArticles = articles.filter(
+    (article) =>
+      article.title.toLowerCase().includes(searchValue.toLowerCase()) ||
+      article.description.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-4">
+      {filteredArticles.length > 0 ? (
+        <ul className="space-y-4">
+          {filteredArticles.map((article) => (
+            <li key={article.id} className="border-b border-gray-200 pb-2">
+              <h3 className="text-lg font-semibold">{article.title}</h3>
+              <p className="text-gray-600">{article.description}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-500">No results found for "{searchValue}"</p>
+      )}
     </div>
   );
 }
