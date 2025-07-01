@@ -1,21 +1,30 @@
-'use client';
-import MainStory from './components/MainStory';
+'use server';
+import Primary from './components/Primary';
+import Secondary from './components/Secondary';
 import MoreStories from './components/MoreStories';
 import CategoryGrid from './components/CategoryGrid';
-import {articles, categories} from './data/articles';
+import { fetchArticles, fetchCategories} from './lib/fetch';
 
-export default function Home() {
 
-  const mainStories = articles.filter((article) =>
-    ["breaking news", "trending", "primary", "secondary"].includes(article.priority)
-  );
-  const moreStories = articles.filter((article) => article.priority === "morestories");
+
+export default async function Home() {
+  const [articles, categories] = await Promise.all([
+    fetchArticles(),
+    fetchCategories(),
+  ]);
+
+  const primaryStories = articles.filter((article) =>['breaking news', 'trending', 'primary'].includes(article.tag));
+  const secondaryStories = articles.filter((article) => article.tag=== 'secondary');
+  const moreStories = articles.filter((article) => article.tag === 'morestories');
 
   return (
     <>
-      <MainStory stories={mainStories} />
+      <section className="max-w-7xl mx-auto md:px-3 py-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Primary stories={primaryStories} />
+        <Secondary stories={secondaryStories} />
+      </section>
       <MoreStories stories={moreStories} />
-      <CategoryGrid categories={categories} articles={articles}/>
+      <CategoryGrid categories={categories} articles={articles} />
     </>
   );
 }

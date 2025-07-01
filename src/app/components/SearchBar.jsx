@@ -67,7 +67,7 @@ export function HeaderSearchBar() {
           className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#211C84]"
         />
       </div>
-      <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-2 text-[#211C84] hover:text-gray-700 transition-colors">
+      <button onClick={() => {searchValue?window.scrollTo({ top: 0, behavior: 'smooth' }):setIsSearchOpen(!isSearchOpen)}} className="p-2 text-[#211C84] hover:text-gray-700 transition-colors">
         <Search size={24} />
       </button>
     </div>
@@ -90,7 +90,7 @@ export function SearchResults({ articles }) {
       {filteredArticles.length > 0 ? (
         <ul className="space-y-4">
           {filteredArticles.map((article) => (
-            <li key={article.id} className="border-b border-gray-200 pb-2">
+            <li key={article.AID} className="border-b border-gray-200 pb-2">
               <h3 className="text-lg font-semibold">{article.title}</h3>
               <p className="text-gray-600">{article.description}</p>
             </li>

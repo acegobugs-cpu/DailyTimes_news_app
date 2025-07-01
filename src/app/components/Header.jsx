@@ -53,7 +53,7 @@ export default function Header({sections}) {
         </div>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex justify-center mt-4 space-x-6 text-sm uppercase font-medium text-gray-700">
+        <nav className="hidden md:flex justify-center mt-4 space-x-3 text-sm uppercase font-medium text-gray-700">
           {sections.map((item) => (
             <a key={item.name} href={item.path} className="hover:underline">
               {item.name}
