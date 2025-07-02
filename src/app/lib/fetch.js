@@ -1,10 +1,10 @@
 // import fetch from 'node-fetch';
 
-async function fetchArticles() {
+export async function fetchArticles() {
   try {
-    const response = await fetch(`${process.env.STRAPI_API_URL || 'http://192.168.0.110:1337'}/api/articles?populate[image][populate]=*&populate[category][populate]=*`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/articles?populate[image][populate]=*&populate[category][populate]=*`, {
       headers: {
-      'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
       },
       next: { revalidate: 60 },
     });
@@ -22,9 +22,54 @@ async function fetchArticles() {
   }
 }
 
-async function fetchCategories() {
+export async function fetchArticleById(slug) {
   try {
-    const response = await fetch(`${process.env.STRAPI_API_URL || 'http://192.168.0.110:1337'}/api/categories?populate=*`, {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/articles?filters[slug][$eq]=${encodeURIComponent(slug)}&populate[image][populate]=*&populate[category][populate]=*&populate[content][populate]=*`,{
+        headers: {
+        'Content-Type': 'application/json',
+      },
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      console.error('Article Status:', response.status);
+      throw new Error('Failed to fetch article from Strapi');
+    }
+
+    const { data } = await response.json();
+    return data[0] || null; // Return single article or null
+  } catch (error) {
+    console.error('Error fetching article:', error);
+    return null;
+  }
+}
+
+export async function fetchArticlesByCategory(category) {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/articles?filters[category][name][$eq]=${category}&populate[image][populate]=*&populate[category][populate]=*`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      console.error('Articles by Category Status:', response.status);
+      throw new Error('Failed to fetch articles by category from Strapi');
+    }
+
+    const { data } = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching articles by category:', error);
+    return [];
+  }
+}
+
+export async function fetchCategories() {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories?populate=*`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -98,4 +143,3 @@ function transformCategories(categoriesData) {
   }).filter(item => item !== null); // Remove invalid items
 }
 
-export { fetchArticles, fetchCategories, transformArticles, transformCategories };

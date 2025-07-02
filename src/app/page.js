@@ -19,7 +19,7 @@ export default async function Home() {
 
   return (
     <>
-      <section className="max-w-7xl mx-auto md:px-3 py-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <section className="max-w-6xl mx-auto md:px-3 py-8 grid grid-cols-1 md:grid-cols-4 gap-4">
         <Primary stories={primaryStories} />
         <Secondary stories={secondaryStories} />
       </section>

@@ -3,26 +3,26 @@ export default function Secondary({stories}){
     return (
         <div className="md:col-span-1 md:order-1 md:border-r md:border-[#211C84]">
         {stories.map((story) => (
-          <article key={story.AID} className="grid grid-rows-1 md:grid-rows-2 gap-4 p-2 overflow">
-            {story.image?.map((item, index) => {
+          <article key={story.id} className="grid grid-rows-1 md:grid-rows-2 gap-4 p-2 overflow">
+            {story.image?.map((item) => {
               if (item.__component === "imageurl.imageurl") {
                 return <img
-                  key={index}
-                  src={item.url || null}
+                  key={item.id}
+                  src={item.url}
                   alt="Main headline image"
                   className="w-full h-full object-cover "
                 />;
               } else if (item.__component === "image.image") {
                 return <img
-                  key={index}
-                  src={item.image?.url ? `http://192.168.0.110:1337${item.image.url}` : null}
+                  key={item.id}
+                  src={item.image?.url ? `${process.env.NEXT_PUBLIC_API_URL}${item.image.url}` : '/placeholder.jpg'}
                   alt="Main headline image"
                   className="w-full h-auto object-cover "
                 />;
               } else if (item.__component === "videoembed.videoembed") {
                 return <iframe
-                  key={index}
-                  src={item.videoembed || null}
+                  key={item.id}
+                  src={item.videoembed}
                   title="Video Embed"
                   className="w-full h-auto aspect-video "
                 />;
@@ -37,7 +37,7 @@ export default function Secondary({stories}){
                   .join(' | ')}
               </p>
               <h2 className="text-base md:text-xl font-serif font-bold mb-4">
-                <a href={`/article/${story.AID}`}>{story.Title}</a>
+                <a href={`/article/${story.slug}`}>{story.Title}</a>
               </h2>
               <p className="text-sm md:text-base text-gray-700 overflow-hidden">{story.description} </p>
             </div>

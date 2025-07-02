@@ -32,7 +32,7 @@ export default async function RootLayout({ children }) {
           <Header sections={categories}/>
           <main>
             <MainSearchBar />
-            <SearchResultsWithContext articles={articles} />
+            <SearchResults articles={articles} />
             {children}
           </main>
           <Footer />
@@ -40,9 +40,4 @@ export default async function RootLayout({ children }) {
       </body>
     </html>
   );
-}
-
-function SearchResultsWithContext({ articles }) {
-  const search = useSearch();
-  return <SearchResults searchTerm={search.searchValue} articles={articles} />;
 }

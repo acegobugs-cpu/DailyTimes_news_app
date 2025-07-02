@@ -55,7 +55,7 @@ export default function Header({sections}) {
         {/* Desktop nav */}
         <nav className="hidden md:flex justify-center mt-4 space-x-3 text-sm uppercase font-medium text-gray-700">
           {sections.map((item) => (
-            <a key={item.name} href={item.path} className="hover:underline">
+            <a key={item.name} href={`/section/${item.name}`} className="hover:underline">
               {item.name}
             </a>
           ))}
@@ -77,7 +77,7 @@ export default function Header({sections}) {
         </button>
         <div className="flex flex-col space-y-6 p-4 pt-12 text-sm uppercase font-medium text-gray-700">
           {sections.map((item) => (
-            <a key={item.name} href={item.path} className="hover:underline">
+            <a key={item.name} href={`/section/${item.name}`} className="hover:underline">
               {item.name}
             </a>
           ))}
@@ -95,7 +95,7 @@ export default function Header({sections}) {
         </h1>
         <div className='flex justify-between'>
         {sections.map((item) => (
-            <a key={item.name} href={item.path} className="hover:underline text-center">
+            <a key={item.name} href={`/section/${item.name}`} className="hover:underline text-center">
               {item.name}
             </a>
           ))}

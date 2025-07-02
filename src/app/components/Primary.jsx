@@ -6,16 +6,15 @@ export default function Primary({ stories }) {
       const order = { 'breaking news': 1, trending: 2, primary: 3 };
       return order[a.tag] - order[b.tag];
     });
-
   
   return ( 
       <div className="md:col-span-3 md:order-2 ">
         {topArticles.map((story) => (
           <article
-            key={story.AID}
+            key={story.id}
             className={` grid grid-cols-1 md:grid-cols-2 gap-4 p-2 relative ${
               story.tag=== 'breaking news'
-                ? 'border-t-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                ? 'border-t-2 border-red-500'
                 : 'border-b border-black-300'
             }`}
           >
@@ -32,37 +31,39 @@ export default function Primary({ stories }) {
             {story.image?.map(item => {
                     if (item.__component === "imageurl.imageurl") {
                       return <img
-                        src= {item.url|| null}
+                        key={item.id}
+                        src= {item.url}
                         alt="Main headline image"
                         className="w-full h-auto object-cover"
                       />
                       
                     } else if (item.__component === "image.image") {
                       return <img
-                        src= {item.image?.url ? `http://192.168.0.110:1337${item.image.url}` : null}
+                        key={item.id}
+                        src={item.image?.url ? `${process.env.NEXT_PUBLIC_API_URL}${item.image.url}` : '/placeholder.jpg'}
                         alt="Main headline image"
                         className="w-full h-auto object-cover"
                       />
                       
                     }else if (item.__component === "videoembed.videoembed"){
                       return <iframe
-                        src={item.videoembed || null}
-                        title="Video Embed"
+                        key={item.id}
+                        src={item.videoembed}
                         className="w-full h-auto aspect-video "
                         allowFullScreen
                       ></iframe>;
                     }
                     return null;
                   }).find(url => url !== null)} 
-            <div className="flex flex-col justify-center">
-              <p className="text-xs md:text-sm text-gray-500 mb-2">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs md:text-sm text-gray-500 order-1">
                 {story.category
                   ?.filter(cat => cat?.name)
                   .map(cat => cat.name)
                   .join(' | ')}
               </p>
-              <h2 className="text-lg md:text-3xl font-serif font-bold mb-4"><a href={`/article/${story.AID}`}>{story.Title}</a></h2>
-              <p className="text-sm md:text-base text-gray-700">{story.description} </p>
+              <h2 className="text-lg md:text-3xl font-serif font-bold order-2"><a href={`/article/${story.slug}`}>{story.Title}</a></h2>
+              <p className="text-sm md:text-base text-gray-700 order-3">{story.description}</p>
             </div>
           </article>
         ))}

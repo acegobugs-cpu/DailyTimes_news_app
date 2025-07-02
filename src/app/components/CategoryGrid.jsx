@@ -13,7 +13,7 @@ export default function CategoryGrid({ categories}) {
               {categoryArticles.length > 0 ? (
                 <ul className="space-y-2">
                   {categoryArticles.map((article) => (
-                    <li key={article.AID} className="text-sm text-gray-700 hover:underline cursor-pointer">
+                    <li key={article.id} className="text-sm text-gray-700 hover:underline cursor-pointer">
                       {article.Title}
                     </li>
                   ))}
