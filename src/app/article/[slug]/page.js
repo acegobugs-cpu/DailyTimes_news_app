@@ -2,7 +2,7 @@
 // app/article/[id]/page.js
 import { fetchArticleById, fetchArticles } from '../../lib/fetch';
 import ContentRenderer from '../../components/ContentRenderer';
-
+import MediaRenderer from '../../components/MediaRenderer';
 export async function generateStaticParams() {
   const articles = await fetchArticles();
   return articles.map((article) => ({
@@ -23,10 +23,10 @@ export async function generateMetadata({ params }) {
     }
 
     return {
-      title: article.Title,
+      title: article.title,
       description: article.description,
       openGraph: {
-        title: article.Title,
+        title: article.title,
         description: article.description,
       },
     };
@@ -48,6 +48,7 @@ export default async function ArticlePage({ params }) {
     if (!article) {
       return (
         <main className="max-w-7xl mx-auto px-4 py-8">
+          {console.log(article)}
           <p className="text-center text-gray-700">Article not found.</p>
         </main>
       );
@@ -56,56 +57,23 @@ export default async function ArticlePage({ params }) {
       <main className="max-w-4xl mx-auto px-4 py-8">
         <article>
           <h1 className="text-2xl md:text-4xl font-serif font-bold text-[#211C84] mb-4">
-            {article.Title}
+            {article.title}
           </h1>
           <div className="flex flex-col md:flex-row gap-4 mb-4">
             <div className="flex-1">
               <p className="text-sm text-gray-500">
-                {Array.isArray(article.category) && article.category.length > 0
-                  ? article.category.map(cat=> cat.name).join(' | ')
+                {Array.isArray(article.categories) && article.categories.length > 0
+                  ? article.categories.map(cat=> cat.name).join(' | ')
                   : 'Uncategorized'}
               </p>
               <p className="text-sm text-gray-500">Author: {article.author} | {article.date}</p>
             </div>
             <div className="flex-1">
-              {article.image?.map(item => {
-                if (item.__component === "imageurl.imageurl") {
-                  return (
-                    <img
-                      key={item.id}
-                      src={item.url || '/placeholder.jpg'}
-                      alt="Main headline image"
-                      className="max-w-full h-auto object-cover rounded aspect-[3/2] max-h-64 md:max-h-96"
-                    />
-                  );
-                } else if (item.__component === "image.image") {
-                  return (
-                    <img
-                      key={item.id}
-                      src={item.image?.url ? `${process.env.NEXT_PUBLIC_API_URL}${item.image.url}` : '/placeholder.jpg'}
-                      alt="Main headline image"
-                      className="max-w-full h-auto object-cover rounded aspect-[3/2] max-h-64 md:max-h-96"
-                    />
-                  );
-                } else if (item.__component === "videoembed.videoembed") {
-                  return (
-                    <iframe
-                      key={item.id}
-                      src={item.videoembed || ''}
-                      title="Video Embed"
-                      className="w-full h-auto aspect-video"
-                      allowFullScreen
-                      loading="lazy"
-                      sandbox="allow-scripts allow-same-origin allow-presentation"
-                    />
-                  );
-                }
-                return null;
-              }).filter(Boolean)[0] || <p>No media available</p>}
+              <MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
             </div>
           </div>
           <p className="text-base text-gray-700 mb-6 line-clamp-3">{article.description}</p>
-          <ContentRenderer content={article.content} />
+          <ContentRenderer content={JSON.parse(article.content)} />
         </article>
       </main>
     );

@@ -25,6 +25,7 @@ export default async function RootLayout({ children }) {
     fetchArticles(),
     fetchCategories(),
   ]);
+
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

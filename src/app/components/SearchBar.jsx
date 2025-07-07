@@ -81,7 +81,7 @@ export function SearchResults({ articles }) {
 
   const filteredArticles = articles.filter(
     (article) =>
-      article.Title.toLowerCase().includes(searchValue.toLowerCase()) ||
+      article.title.toLowerCase().includes(searchValue.toLowerCase()) ||
       article.description.toLowerCase().includes(searchValue.toLowerCase())
   );
 
@@ -91,7 +91,7 @@ export function SearchResults({ articles }) {
         <ul className="space-y-4">
           {filteredArticles.map((article) => (
             <li key={article.id} className="border-b border-gray-200 pb-2">
-              <h3 className="text-lg font-semibold">{article.Title}</h3>
+              <h3 className="text-lg font-semibold">{article.title}</h3>
               <p className="text-gray-600">{article.description}</p>
             </li>
           ))}

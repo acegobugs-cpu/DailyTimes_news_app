@@ -1,43 +1,19 @@
-
+import MediaRenderer from "./MediaRenderer";
 export default function Secondary({stories}){
     return (
         <div className="md:col-span-1 md:order-1 md:border-r md:border-[#211C84]">
         {stories.map((story) => (
           <article key={story.id} className="grid grid-rows-1 md:grid-rows-2 gap-4 p-2 overflow">
-            {story.image?.map((item) => {
-              if (item.__component === "imageurl.imageurl") {
-                return <img
-                  key={item.id}
-                  src={item.url}
-                  alt="Main headline image"
-                  className="w-full h-full object-cover "
-                />;
-              } else if (item.__component === "image.image") {
-                return <img
-                  key={item.id}
-                  src={item.image?.url ? `${process.env.NEXT_PUBLIC_API_URL}${item.image.url}` : '/placeholder.jpg'}
-                  alt="Main headline image"
-                  className="w-full h-auto object-cover "
-                />;
-              } else if (item.__component === "videoembed.videoembed") {
-                return <iframe
-                  key={item.id}
-                  src={item.videoembed}
-                  title="Video Embed"
-                  className="w-full h-auto aspect-video "
-                />;
-              }
-              return null;
-            }).find(url => url !== null)}
+            <MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
             <div className="flex flex-col justify-center">
               <p className="text-xs md:text-sm text-gray-500">
-                {story.category
+                {story.categories
                   ?.filter(cat => cat?.name)
                   .map(cat => cat.name)
                   .join(' | ')}
               </p>
               <h2 className="text-base md:text-xl font-serif font-bold mb-4">
-                <a href={`/article/${story.slug}`}>{story.Title}</a>
+                <a href={`/article/${story.slug}`}>{story.title}</a>
               </h2>
               <p className="text-sm md:text-base text-gray-700 overflow-hidden">{story.description} </p>
             </div>

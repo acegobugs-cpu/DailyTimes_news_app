@@ -1,4 +1,5 @@
 'use client';
+import MediaRenderer from "./MediaRenderer";
 
 export default function Primary({ stories }) {
   const topArticles = stories.filter((article) => ['breaking news', 'trending', 'primary'].includes(article.tag))
@@ -28,41 +29,15 @@ export default function Primary({ stories }) {
                 Breaking News
               </div>
             )}
-            {story.image?.map(item => {
-                    if (item.__component === "imageurl.imageurl") {
-                      return <img
-                        key={item.id}
-                        src= {item.url}
-                        alt="Main headline image"
-                        className="w-full h-auto object-cover"
-                      />
-                      
-                    } else if (item.__component === "image.image") {
-                      return <img
-                        key={item.id}
-                        src={item.image?.url ? `${process.env.NEXT_PUBLIC_API_URL}${item.image.url}` : '/placeholder.jpg'}
-                        alt="Main headline image"
-                        className="w-full h-auto object-cover"
-                      />
-                      
-                    }else if (item.__component === "videoembed.videoembed"){
-                      return <iframe
-                        key={item.id}
-                        src={item.videoembed}
-                        className="w-full h-auto aspect-video "
-                        allowFullScreen
-                      ></iframe>;
-                    }
-                    return null;
-                  }).find(url => url !== null)} 
+            <MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
             <div className="flex flex-col gap-2">
               <p className="text-xs md:text-sm text-gray-500 order-1">
-                {story.category
+                {story.categories
                   ?.filter(cat => cat?.name)
                   .map(cat => cat.name)
                   .join(' | ')}
               </p>
-              <h2 className="text-lg md:text-3xl font-serif font-bold order-2"><a href={`/article/${story.slug}`}>{story.Title}</a></h2>
+              <h2 className="text-lg md:text-3xl font-serif font-bold order-2"><a href={`/article/${story.slug}`}>{story.title}</a></h2>
               <p className="text-sm md:text-base text-gray-700 order-3">{story.description}</p>
             </div>
           </article>
