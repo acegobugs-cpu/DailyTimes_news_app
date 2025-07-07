@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import List
 from database import get_db
-from models import Article, Category
+from models import Article, Category, article_category
 from schemas import ArticleRes, CategoryRes, ArticleCreate, CategoryCreate
 from fastapi.responses import JSONResponse
 import os
@@ -96,6 +96,20 @@ async def get_articles_by_category(
         raise HTTPException(status_code=404, detail="Category not found")
     return category.articles[:limit]
 
+@app.get("/api/categories/{slug}/articles", response_model=List[ArticleRes])
+async def get_articles_by_category(slug: str, limit: int = 10, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.slug == slug).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    articles = (
+        db.query(Article)
+        .join(article_category)
+        .filter(article_category.c.category_id == category.id)
+        .limit(limit)
+        .all()
+    )
+    return articles
+
 @app.post("/api/articles", response_model=ArticleRes)
 async def create_article(article: ArticleCreate, db: Session = Depends(get_db)):
     db_article = Article(**article.dict(exclude={"category_ids"}))
@@ -116,3 +130,20 @@ async def create_category(category: CategoryCreate, db: Session = Depends(get_db
     db.refresh(db_category)
     return db_category
 
+@app.delete("/api/articles/{article_id}", status_code=204)
+async def delete_article(article_id: int, db: Session = Depends(get_db)):
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    db.delete(article)
+    db.commit()
+    return None
+
+@app.delete("/api/categories/{category_id}", status_code=204)
+async def delete_category(category_id: int, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    db.delete(category)
+    db.commit()
+    return None
