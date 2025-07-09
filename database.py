@@ -1,10 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
+from dotenv import load_dotenv
+import aiosmtplib
 
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:dbroot@192.168.111.40:3306/new"
+load_dotenv() 
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(os.getenv("DATABASE_URL_DB"))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

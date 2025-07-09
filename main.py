@@ -1,20 +1,20 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, Query, File, UploadFile, APIRouter, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import List
 from database import get_db
-from models import Article, Category, article_category
+from models import User, Article, Category, article_category
 from schemas import ArticleRes, CategoryRes, ArticleCreate, CategoryCreate
 from fastapi.responses import JSONResponse
 import os
 from datetime import datetime
 from fastapi.staticfiles import StaticFiles
-
-
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt, JWTError
+from routes import auth 
 
 app = FastAPI()
-
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth.router, tags=["Auth"])
+
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 UPLOAD_DIR = "uploads"

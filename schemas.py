@@ -1,7 +1,50 @@
 from __future__ import annotations
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, constr
 from typing import List, Optional
 from datetime import datetime
+
+
+class UserBase(BaseModel):
+    fname:str
+    mname:Optional[str] = None
+    lname:str
+    uname: str
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: constr(min_length=8)
+
+class UserLoginInput(BaseModel):
+    email_or_username: str
+    password: str
+
+class UserRes(UserBase):
+    id: int
+    uid: str
+    fname: str
+    lname: str
+    uname: str
+    is_superuser: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AuthorizedEmailBase (BaseModel):
+    email: EmailStr
+
+class AuthorizedEmailCreate(AuthorizedEmailBase):
+    pass
+
+class AuthorizedEmailRes(AuthorizedEmailBase):
+    id: int
+    slug: str
+    used: bool
+    created_at: datetime
+    inviter_id: Optional[int]
+
+    class Config:
+        from_attributes = True
 
 class CategoryBase(BaseModel):
     name: str

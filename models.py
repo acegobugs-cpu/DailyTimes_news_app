@@ -1,6 +1,7 @@
 # from xmlrpc.client import Boolean
-from sqlalchemy import Boolean, Integer, String, JSON, Table, Column, ForeignKey, DateTime
+from sqlalchemy import Boolean, Integer, String, JSON, Table, Column, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -14,6 +15,34 @@ article_category = Table(
     Column('article_id', Integer, ForeignKey('articles.id'), primary_key=True),
     Column('category_id', Integer, ForeignKey('categories.id'), primary_key=True)
 )
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    uid = Column(String(100), unique=True, nullable=False)
+    fname = Column(String(50), nullable=False)
+    mname = Column(String(50), nullable=True)
+    lname = Column(String(50), nullable=False)
+    uname = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(120), unique=True, index=True, nullable=False)
+    h_password = Column(Text, nullable=False)
+    is_superuser = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True),server_default=func.now())
+
+    invites = relationship("AuthorizedEmail", back_populates="inviter", cascade="all, delete")
+
+class AuthorizedEmail(Base):
+    __tablename__  = "authorized_emails"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String(100), unique=True, nullable=False)
+    email = Column(String(120), unique=True, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True),server_default=func.now())
+
+    inviter_id = Column(Integer, ForeignKey("users.id"))
+    inviter = relationship("User", back_populates="invites")
 
 class Category(Base):
     __tablename__ = "categories"
