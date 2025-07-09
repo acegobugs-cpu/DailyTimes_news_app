@@ -26,6 +26,8 @@ app.add_middleware(
 
 app.include_router(auth.router, tags=["Auth"])
 
+# frontend_path = os.path.join(os.path.dirname(__file__), "../frontend/dist")
+# app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 UPLOAD_DIR = "uploads"
