@@ -18,7 +18,11 @@ app = FastAPI()
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],  # Change to your frontend URL in production
+    allow_origins=["https://the-daily-times-com.vercel.app",
+        "https://strong-zabaione-697d0a.netlify.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        ],  # Change to your frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
