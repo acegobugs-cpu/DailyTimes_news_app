@@ -43,7 +43,6 @@ async def upload_file(file: UploadFile = File(...)):
 
     return JSONResponse(content={"url": f"/{filepath}"}, status_code=201)
 
-
 @app.get("/api/articles", response_model=List[ArticleRes])
 async def get_articles(
     db: Session = Depends(get_db),
