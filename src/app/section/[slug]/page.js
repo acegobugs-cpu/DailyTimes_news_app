@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 
 import { fetchArticlesByCategory} from '../../lib/fetch';
 import MediaRenderer from '../../components/MediaRenderer';
@@ -19,7 +20,7 @@ export default async function CategoryPage({params}) {
             const parsedCategory = typeof article.categories === 'string' ? JSON.parse(article.categories) : article.categories;
             return (
               <article key={article.slug} className="grid grid-rows-2 gap-4">
-                <MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
+                {article.media&&<MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
                 <div className="flex flex-col justify-center">
                   <p className="text-xs md:text-sm text-gray-500">{parsedCategory.map(cat => cat.name).join(' | ')}</p>
                   <h2 className="text-base md:text-xl font-serif font-bold mb-4">{article.title}</h2>

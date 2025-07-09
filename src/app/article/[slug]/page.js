@@ -1,4 +1,4 @@
-'use server';
+export const dynamic = 'force-dynamic';
 // app/article/[id]/page.js
 import { fetchArticleById, fetchArticles } from '../../lib/fetch';
 import ContentRenderer from '../../components/ContentRenderer';
@@ -69,18 +69,18 @@ export default async function ArticlePage({ params }) {
               <p className="text-sm text-gray-500">Author: {article.author} | {article.date}</p>
             </div>
             <div className="flex-1">
-              <MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
+              {article.media&&<MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
             </div>
           </div>
           <p className="text-base text-gray-700 mb-6 line-clamp-3">{article.description}</p>
-          <ContentRenderer content={(() => {
+          {article.content&&<ContentRenderer content={(() => {
             try {
               return JSON.parse(article.content);
             } catch (e) {
               console.error('Failed to parse article content:', e);
               return []; // or some fallback content structure
             }
-          })()} />
+          })()} />}
         </article>
       </main>
     );

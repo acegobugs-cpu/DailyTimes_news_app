@@ -7,8 +7,8 @@ export default function Primary({ stories }) {
       const order = { 'breaking news': 1, trending: 2, primary: 3 };
       return order[a.tag] - order[b.tag];
     });
-  
-  return ( 
+
+    return ( 
       <div className="md:col-span-3 md:order-2 ">
         {topArticles.map((story) => (
           <article
@@ -29,7 +29,7 @@ export default function Primary({ stories }) {
                 Breaking News
               </div>
             )}
-            <MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
+            {story.media&&<MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story?.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
             <div className="flex flex-col gap-2">
               <p className="text-xs md:text-sm text-gray-500 order-1">
                 {story.categories

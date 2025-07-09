@@ -8,7 +8,7 @@ const API = axios.create({
 });
 
 // Optional: manually handle revalidation with Next.js if needed
-const REVALIDATE_DURATION = 60 * 1000; // 60 seconds
+const REVALIDATE_DURATION = 30 * 1000; // 60 seconds
 
 export async function fetchArticles() {
   try {

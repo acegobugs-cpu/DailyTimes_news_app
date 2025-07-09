@@ -4,7 +4,7 @@ export default function Secondary({stories}){
         <div className="md:col-span-1 md:order-1 md:border-r md:border-[#211C84]">
         {stories.map((story) => (
           <article key={story.id} className="grid grid-rows-1 md:grid-rows-2 gap-4 p-2 overflow">
-            <MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />
+            {story.media&&<MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
             <div className="flex flex-col justify-center">
               <p className="text-xs md:text-sm text-gray-500">
                 {story.categories

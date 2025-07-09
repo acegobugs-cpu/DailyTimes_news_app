@@ -1,4 +1,5 @@
-'use server';
+export const dynamic = 'force-dynamic';
+
 import Primary from './components/Primary';
 import Secondary from './components/Secondary';
 import MoreStories from './components/MoreStories';

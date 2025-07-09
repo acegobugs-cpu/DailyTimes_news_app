@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { SearchProvider, MainSearchBar, SearchResults, useSearch  } from './components/SearchBar';
 import { Geist, Geist_Mono } from "next/font/google";
 import Header from './components/Header';
