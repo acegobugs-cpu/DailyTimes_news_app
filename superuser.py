@@ -13,7 +13,7 @@ def create_superuser():
             lname="Admin",
             uname="root",
             email="superadmin@example.com",
-            h_password=hash_password("StrongPassword"),
+            h_password=hash_password("STPassword"),
             is_superuser=True,
         )
         db.add(superuser)
