@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Menu, X} from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import {HeaderSearchBar, useSearch} from './SearchBar';
 
 export default function Header({sections}) {
@@ -9,7 +10,20 @@ export default function Header({sections}) {
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(200);
   const sidePanelRef = useRef(null);
+  const navRef = useRef(null);
+  const scrollRef = useRef(null);
 
+  const scroll = (dir) => {
+    const amount = 150;
+    navRef.current?.scrollBy({
+      left: dir === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    });
+    scrollRef.current?.scrollBy({
+      left: dir === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    });
+  }
   // Close side panel when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,13 +67,41 @@ export default function Header({sections}) {
         </div>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex justify-center mt-4 space-x-3 text-sm uppercase font-medium text-gray-700">
-          {sections.map((item) => (
-            <a key={item.id} href={`/section/${item.slug}`} className="hover:underline">
-              {item.name}
-            </a>
-          ))}
-        </nav>
+        <div className="relative mt-4 hidden md:flex mx-auto max-w-lg">
+          {/* Left button */}
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded z-10"
+          >
+            <ChevronLeftIcon className="h-5 w-5" />
+          </button>
+
+          {/* Scrollable nav */}
+          <nav
+            ref={navRef}
+            className="flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory 
+                      space-x-3 text-sm uppercase font-medium text-gray-700 px-10"
+          >
+            {sections.map((item) => (
+              <a
+                key={item.slug}
+                href={`/section/${item.slug}`}
+                className="snap-start shrink-0 hover:underline whitespace-nowrap"
+              >
+                {item.name}
+              </a>
+            ))}
+          </nav>
+
+          {/* Right button */}
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded z-10"
+          >
+            <ChevronRightIcon className="h-5 w-5" />
+          </button>
+        </div>
+
       </div>
 
       {/* Mobile nav */}
@@ -77,7 +119,7 @@ export default function Header({sections}) {
         </button>
         <div className="flex flex-col space-y-6 p-4 pt-12 text-sm uppercase font-medium text-gray-700">
           {sections.map((item) => (
-            <a key={item.name} href={`/section/${item.slug}`} className="hover:underline">
+            <a key={item.slug} href={`/section/${item.slug}`} className="hover:underline">
               {item.name}
             </a>
           ))}
@@ -93,14 +135,41 @@ export default function Header({sections}) {
         <h1 className="text-xl font-serif font-bold tracking-widest text-[#211C84]">
           The Daily Times
         </h1>
-        <div className='flex justify-between'>
-        {sections.map((item) => (
-            <a key={item.name} href={`/section/${item.slug}`} className="hover:underline text-center">
-              {item.name}
-            </a>
-          ))}
+        <div className="relative mt-4 hidden md:flex mx-auto max-w-lg">
+          {/* Left button */}
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#ededed] px-2 py-1 rounded z-10"
+          >
+            <ChevronLeftIcon className="h-5 w-5" />
+          </button>
+
+          {/* Scrollable nav */}
+          <nav
+            ref={scrollRef}
+            className="flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory 
+                      space-x-3 text-sm uppercase font-medium text-gray-700 px-10"
+          >
+            {sections.map((item) => (
+              <a
+                key={item.slug}
+                href={`/section/${item.slug}`}
+                className="snap-start shrink-0 hover:underline whitespace-nowrap"
+              >
+                {item.name}
+              </a>
+            ))}
+          </nav>
+
+          {/* Right button */}
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-[#ededed] hover-blue px-2 py-1 rounded z-10"
+          >
+            <ChevronRightIcon className="h-5 w-5" />
+          </button>
         </div>
-        <div className="col-span-1"></div> {/* Spacer */}
+        <div className="col-span-1 z-[-50]"></div> {/* Spacer */}
         <HeaderSearchBar />
       </nav>
     </header>

@@ -73,7 +73,14 @@ export default async function ArticlePage({ params }) {
             </div>
           </div>
           <p className="text-base text-gray-700 mb-6 line-clamp-3">{article.description}</p>
-          <ContentRenderer content={JSON.parse(article.content)} />
+          <ContentRenderer content={(() => {
+            try {
+              return JSON.parse(article.content);
+            } catch (e) {
+              console.error('Failed to parse article content:', e);
+              return []; // or some fallback content structure
+            }
+          })()} />
         </article>
       </main>
     );

@@ -10,7 +10,7 @@ export default function MediaRenderer({
   }
   let src = media.url;
   if (media.source === "local" && !src.startsWith("http")) {
-    src = `http://127.0.0.1:8000${media.url}`;
+    src = `${process.env.NEXT_PUBLIC_API_URL}${media.url}`;
   }
 
   switch (media.mediaType) {

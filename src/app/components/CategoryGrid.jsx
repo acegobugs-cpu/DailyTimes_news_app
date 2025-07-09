@@ -7,13 +7,13 @@ export default function CategoryGrid({ categories}) {
       <div className="max-w-7xl mx-auto px-4 py-4 md:grid md:grid-cols-3 gap-3">
         {categories.map((category) => {
           const categoryArticles = typeof category.articles === 'string' ? JSON.parse(category.articles) : category.articles;
-          categoryArticles.slice(0, 3);
+          const articles = categoryArticles.slice(0, 3);
           return (
             <div key={category.id} className="">
               <h4 className="font-bold text-lg mb-2 border-b border-t pb-1"><a href={`/section/${category.slug}`}>{category.name}</a></h4>
-              {categoryArticles.length > 0 ? (
+              {articles.length > 0 ? (
                 <ul className="space-y-2">
-                  {categoryArticles.map((article) => (
+                  {articles.map((article) => (
                     <li key={article.slug} className="text-sm text-gray-700 hover:underline cursor-pointer">
                        <a href={`/article/${article.slug}`}>{article.title}</a>
                     </li>

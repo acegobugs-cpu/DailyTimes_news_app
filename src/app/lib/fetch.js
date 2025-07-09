@@ -1,90 +1,63 @@
-// import fetch from 'node-fetch';
+import axios from 'axios';
+
+const API = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL + '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Optional: manually handle revalidation with Next.js if needed
+const REVALIDATE_DURATION = 60 * 1000; // 60 seconds
 
 export async function fetchArticles() {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/articles`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
-
-    if (!response.ok) {
-      console.error('Articles Status:', response.status);
-      throw new Error('Failed to fetch articles from Strapi');
-    }
-
-    const data  = await response.json();
-    return data;
+    const res = await API.get('/articles');
+    return res.data;
   } catch (error) {
-    console.error('Error fetching articles:', error);
+    if (error.response) {
+      console.error('Articles Status:', error.response.status);
+    }
+    console.error('Error fetching articles:', error.message);
     return [];
   }
 }
 
 export async function fetchArticleById(slug) {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/articles/slug/${slug}`,{
-        headers: {
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
-
-    if (!response.ok) {
-      console.error('Article Status:', response.status);
-      throw new Error('Failed to fetch article from Strapi');
-    }
-
-    const data = await response.json();
-    return data || null; // Return single article or null
+    const res = await API.get(`/articles/slug/${slug}`);
+    return res.data || null;
   } catch (error) {
-    console.error('Error fetching article:', error);
+    if (error.response) {
+      console.error('Article Status:', error.response.status);
+    }
+    console.error('Error fetching article:', error.message);
     return null;
   }
 }
 
 export async function fetchArticlesByCategory(slug) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories/${slug}/articles`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
-
-    if (!response.ok) {
-      console.error('Articles by Category Status:', response.status);
-      throw new Error('Failed to fetch articles by category from Strapi');
-    }
-
-    const data = await response.json();
-    return data;
+    const res = await API.get(`/categories/${slug}/articles`);
+    return res.data;
   } catch (error) {
-    console.error('Error fetching articles by category:', error);
+    if (error.response) {
+      console.error('Articles by Category Status:', error.response.status);
+    }
+    console.error('Error fetching articles by category:', error.message);
     return [];
   }
 }
 
 export async function fetchCategories() {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
-
-    if (!response.ok) {
-      console.error('Categories Status:', response.status);
-      throw new Error('Failed to fetch categories from Strapi');
-    }
-
-    const data = await response.json();
-    return data;
+    const res = await API.get('/categories');
+    return res.data;
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    if (error.response) {
+      console.error('Categories Status:', error.response.status);
+    }
+    console.error('Error fetching categories:', error.message);
     return [];
   }
 }
