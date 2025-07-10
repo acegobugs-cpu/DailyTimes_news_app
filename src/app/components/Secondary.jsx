@@ -3,7 +3,7 @@ export default function Secondary({stories}){
     return (
         <div className="md:col-span-1 md:order-1 md:border-r md:border-[#211C84]">
         {stories.map((story) => (
-          <article key={story.id} className="grid grid-rows-1 md:grid-rows-2 gap-4 p-2 overflow">
+          <article key={story.id} className="flex-cols justify-center gap-4 p-2 overflow">
             {story.media&&<MediaRenderer media={typeof story.media === 'string' ? JSON.parse(story.media) : story.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
             <div className="flex flex-col justify-center">
               <p className="text-xs md:text-sm text-gray-500">

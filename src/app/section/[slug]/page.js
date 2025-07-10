@@ -19,7 +19,7 @@ export default async function CategoryPage({params}) {
           filteredArticles.map((article) => {
             const parsedCategory = typeof article.categories === 'string' ? JSON.parse(article.categories) : article.categories;
             return (
-              <article key={article.slug} className="grid grid-rows-2 gap-4">
+              <article key={article.slug} className="flex-cols justify-center">
                 {article.media&&<MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
                 <div className="flex flex-col justify-center">
                   <p className="text-xs md:text-sm text-gray-500">{parsedCategory.map(cat => cat.name).join(' | ')}</p>

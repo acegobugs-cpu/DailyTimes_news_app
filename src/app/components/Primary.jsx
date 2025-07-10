@@ -13,7 +13,7 @@ export default function Primary({ stories }) {
         {topArticles.map((story) => (
           <article
             key={story.id}
-            className={` grid grid-cols-1 md:grid-cols-2 gap-4 p-2 relative ${
+            className={` md:grid flex-cols justify-center md:grid-cols-2 gap-4 p-2 relative ${
               story.tag=== 'breaking news'
                 ? 'border-t-2 border-red-500'
                 : 'border-b border-black-300'
