@@ -14,6 +14,18 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: constr(min_length=8)
 
+class UserUpdate(UserBase):
+    fname: Optional[str]
+    mname: Optional[str]
+    lname: Optional[str]
+    email: Optional[EmailStr]
+    uname: Optional[str]
+    is_superuser: Optional[bool]
+    password: Optional[str]  # only if admins can update passwords
+
+    class Config:
+        from_attributes = True
+
 class UserLoginInput(BaseModel):
     email_or_username: str
     password: str
@@ -49,6 +61,13 @@ class AuthorizedEmailRes(AuthorizedEmailBase):
 class CategoryBase(BaseModel):
     name: str
     slug: str
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str]
+    slug: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 class CategoryCreate(CategoryBase):
     pass

@@ -5,7 +5,7 @@ from sqlalchemy import desc
 from typing import List
 from database import get_db
 from models import User, Article, Category, article_category
-from schemas import ArticleRes, CategoryRes, ArticleCreate, CategoryCreate
+from schemas import ArticleRes, CategoryRes, ArticleCreate, CategoryCreate, CategoryUpdate
 from fastapi.responses import JSONResponse
 import os
 from datetime import datetime
@@ -147,6 +147,23 @@ async def delete_article(article_id: int, db: Session = Depends(get_db), current
     db.delete(article)
     db.commit()
     return None
+
+@app.put("/api/categories/{id}", response_model=CategoryRes)
+def update_category(id: int, data: CategoryUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    category = db.query(Category).filter(Category.id == id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(category, field, value)
+
+    db.commit()
+    db.refresh(category)
+    return category
+
 
 @app.delete("/api/categories/{category_id}", status_code=204)
 async def delete_category(category_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

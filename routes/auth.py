@@ -6,7 +6,7 @@ from typing import List
 
 from database import get_db
 from models import User, AuthorizedEmail
-from schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes
+from schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes, UserUpdate
 from utils.auth import hash_password, verify_password, create_access_token
 from utils.mail import send_invite_email
 from routes.dependencies import superadmin_required
@@ -62,6 +62,23 @@ def login(data: UserLoginInput, db: Session = Depends(get_db)):
             "username": user.uname
         }
     }
+
+@router.put("/api/users/{id}", response_model=UserRes)
+def update_user(id: int, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    user = db.query(User).filter(User.id == id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
 
 @router.post("/api/authorize-emails", response_model=AuthorizedEmailRes)
 async def authorize_email(
