@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from routes import auth 
+from routes.dependencies import get_current_user
 
 app = FastAPI()
 # CORS
@@ -38,7 +39,7 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     ext = file.filename.split(".")[-1]
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
     filepath = os.path.join(UPLOAD_DIR, filename)
@@ -119,7 +120,7 @@ async def get_articles_by_category(slug: str, limit: int = 10, db: Session = Dep
     return articles
 
 @app.post("/api/articles", response_model=ArticleRes)
-async def create_article(article: ArticleCreate, db: Session = Depends(get_db)):
+async def create_article(article: ArticleCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_article = Article(**article.dict(exclude={"category_ids"}))
     categories = db.query(Category).filter(Category.id.in_(article.category_ids)).all()
     if not categories:
@@ -131,7 +132,7 @@ async def create_article(article: ArticleCreate, db: Session = Depends(get_db)):
     return db_article
 
 @app.post("/api/categories", response_model=CategoryRes)
-async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+async def create_category(category: CategoryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_category = Category(**category.dict())
     db.add(db_category)
     db.commit()
@@ -139,7 +140,7 @@ async def create_category(category: CategoryCreate, db: Session = Depends(get_db
     return db_category
 
 @app.delete("/api/articles/{article_id}", status_code=204)
-async def delete_article(article_id: int, db: Session = Depends(get_db)):
+async def delete_article(article_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     article = db.query(Article).filter(Article.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -148,7 +149,7 @@ async def delete_article(article_id: int, db: Session = Depends(get_db)):
     return None
 
 @app.delete("/api/categories/{category_id}", status_code=204)
-async def delete_category(category_id: int, db: Session = Depends(get_db)):
+async def delete_category(category_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")

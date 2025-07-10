@@ -9,7 +9,7 @@ from models import User, AuthorizedEmail
 from schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes
 from utils.auth import hash_password, verify_password, create_access_token
 from utils.mail import send_invite_email
-from routes.dependencies import get_current_user
+from routes.dependencies import superadmin_required
 
 router = APIRouter()
 
@@ -58,9 +58,8 @@ def login(data: UserLoginInput, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": {
             "id": user.id,
-            "email": user.email,
-            "username": user.uname,
-            "is_superuser": user.is_superuser
+            "uid": user.uid,
+            "username": user.uname
         }
     }
 
@@ -68,10 +67,8 @@ def login(data: UserLoginInput, db: Session = Depends(get_db)):
 async def authorize_email(
     data: AuthorizedEmailCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(superadmin_required)
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Check if already authorized
     existing = db.query(AuthorizedEmail).filter_by(email=data.email).first()
@@ -95,12 +92,25 @@ async def authorize_email(
         raise HTTPException(status_code=500, detail="Failed to send invitation email")
     return invite
 
+@router.get("/api/getEmails", response_model=List[AuthorizedEmailRes])
+def list_authorized_emails(db:Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
+    return db.query(AuthorizedEmail).all()
+
+@router.delete("/api/delEmails/{email_id}", status_code=204)
+def delete_Email(email_id: int, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
+    email = db.query(AuthorizedEmail).filter(AuthorizedEmail.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="AuthorizedEmail not found")
+    db.delete(email)
+    db.commit()
+    return {"detail": "Email deleted"}
+
 @router.get("/api/users", response_model=List[UserRes])
-def list_users(db: Session = Depends(get_db)):
+def list_users(db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     return db.query(User).all()
 
 @router.delete("/api/users/{user_id}", status_code=204)
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

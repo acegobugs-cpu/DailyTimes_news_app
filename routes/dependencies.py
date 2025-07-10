@@ -12,6 +12,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         user_id = payload.get("sub")
+        
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         user = db.query(User).filter(User.id == int(user_id)).first()
@@ -20,3 +21,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def superadmin_required(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Unauthorized (superadmin only)")
+    return current_user
+
+def editor_required(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Editor access only")
+    return current_user
