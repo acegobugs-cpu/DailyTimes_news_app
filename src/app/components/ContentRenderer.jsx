@@ -9,15 +9,21 @@ export default function ContentRenderer({ content }) {
     <div className="space-y-4">
       {content.map((block) => {
         switch (block.type) {
-          case 'header':
+          case 'header1':
             return (
-              <h2  className="text-2xl font-bold text-gray-900">
-                {block.header}
+              <h2 key={block.type} className="text-2xl font-bold text-gray-900">
+                {block.content}
               </h2>
+            );
+          case 'header2':
+            return (
+              <h3 key={block.type} className="text-xl font-bold text-gray-900">
+                {block.content}
+              </h3>
             );
           case 'paragraph':
             return (
-              <p  className="text-base text-gray-700">
+              <p  key={block.type} className="text-base text-gray-700">
               {block.content}
               </p>
             );
