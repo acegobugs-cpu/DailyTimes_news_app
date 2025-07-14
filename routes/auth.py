@@ -62,17 +62,22 @@ def login(data: UserLoginInput, db: Session = Depends(get_db)):
             "username": user.uname
         }
     }
-
 @router.put("/api/users/{id}", response_model=UserRes)
 def update_user(id: int, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     user = db.query(User).filter(User.id == id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if data.email and db.query(User).filter(User.email == data.email, User.id != id).first():
+        raise HTTPException(status_code=422, detail="Email already in use")
+    data_dict = data.dict(exclude_unset=True)
+    non_nullable = ["fname", "lname", "uname", "email"]  # Fields requiring non-empty strings
+    for field in non_nullable:
+        if field in data_dict and (data_dict[field] is None or data_dict[field] == ""):
+            raise HTTPException(status_code=422, detail=f"{field} cannot be empty or null")  # Reject empty strings
+    if "password" in data_dict and data_dict["password"]:
+        user.h_password = hash_password(data_dict.pop("password"))
 
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data_dict.items():
         setattr(user, field, value)
 
     db.commit()
@@ -129,6 +134,7 @@ def list_users(db: Session = Depends(get_db), current_user: User = Depends(super
 @router.delete("/api/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     user = db.query(User).filter(User.id == user_id).first()
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user)

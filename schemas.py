@@ -14,14 +14,14 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: constr(min_length=8)
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
     fname: Optional[str]
     mname: Optional[str]
     lname: Optional[str]
     email: Optional[EmailStr]
     uname: Optional[str]
+    password: Optional[str] = None
     is_superuser: Optional[bool]
-    password: Optional[str]  # only if admins can update passwords
 
     class Config:
         from_attributes = True

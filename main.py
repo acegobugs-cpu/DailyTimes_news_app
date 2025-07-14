@@ -28,7 +28,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(auth.router, tags=["Auth"])
 
 # frontend_path = os.path.join(os.path.dirname(__file__), "../frontend/dist")
