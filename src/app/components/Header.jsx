@@ -3,6 +3,32 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X} from 'lucide-react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import {HeaderSearchBar, useSearch} from './SearchBar';
+import { useTranslation } from 'react-i18next';
+
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const languages = ['en', 'om', 'am'];
+
+  return (
+    <div className="flex space-x-4 justify-center border rounded text-black absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6">
+      {languages.map((lng) => (
+        <button
+          key={lng}
+          onClick={() => i18n.changeLanguage(lng)}
+          className={`px-4 transition-all
+            ${i18n.language === lng
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-black border-gray-300 hover:border-blue-400 hover:text-blue-600'}
+          `}
+        >
+          {lng.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+
+}
+
 
 export default function Header({sections}) {
   const { searchValue } = useSearch();
@@ -57,10 +83,11 @@ export default function Header({sections}) {
   return (
     <header className="w-full border-b-2 border-[#211C84]">
       <div className="max-w-7xl mx-auto p-4">
-        <div className="flex justify-between items-center">
+        <div className=" relative flex justify-between items-center">
           <h1 className="md:text-3xl text-xl font-serif font-bold tracking-widest text-[#211C84]">
             <a href="/">The Daily Times</a>
           </h1>
+          <LanguageSwitcher className="p-2 border rounded text-black absolute left-1/2 -translate-x-1/2 -translate-y-1/2 "/>
           <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -80,7 +107,7 @@ export default function Header({sections}) {
           <nav
             ref={navRef}
             className="flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory 
-                      space-x-3 text-sm uppercase font-medium text-gray-700 px-10"
+                      space-x-3 text-sm uppercase font-medium text-gray-700 px-20"
           >
             {sections.map((item) => (
               <a

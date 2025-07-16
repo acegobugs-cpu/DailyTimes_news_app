@@ -2,6 +2,8 @@
 'use client';
 import { Search } from 'lucide-react';
 import { createContext, useContext, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
 
 const SearchContext = createContext();
 
@@ -26,6 +28,7 @@ export function useSearch() {
 
 
 export function MainSearchBar({ onSearch }) {
+  const { t } = useTranslation();
   const { searchValue, handleSearch } = useSearch();
   
   const handleChange = (e) => {
@@ -38,7 +41,7 @@ export function MainSearchBar({ onSearch }) {
         type="text"
         value={searchValue}
         onChange={handleChange}
-        placeholder="Search articles..."
+        placeholder={t('search_articles')}
         className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring"
       />
     </div>

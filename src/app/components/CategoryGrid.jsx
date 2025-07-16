@@ -1,9 +1,12 @@
 'use client';
+import { useTranslation } from 'react-i18next';
+
 export default function CategoryGrid({ categories}) {
+  const {t} = useTranslation();
   
   return (
     <section className="max-w-7xl mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b">Categories</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b">{t('categories')}</h2>
       <div className="max-w-7xl mx-auto px-4 py-4 md:grid md:grid-cols-3 gap-3">
         {categories.map((category) => {
           const categoryArticles = typeof category.articles === 'string' ? JSON.parse(category.articles) : category.articles;

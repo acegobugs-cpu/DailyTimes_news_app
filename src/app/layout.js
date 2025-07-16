@@ -4,6 +4,7 @@ import { SearchProvider, MainSearchBar, SearchResults, useSearch  } from './comp
 import { Geist, Geist_Mono } from "next/font/google";
 import Header from './components/Header';
 import Footer from "./components/Footer";
+import TranslationProvider from './components/TranslationProvider';
 import { fetchArticles, fetchCategories} from './lib/fetch';
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <TranslationProvider>
       <SearchProvider>
           <Header sections={categories}/>
           <main>
@@ -40,6 +42,7 @@ export default async function RootLayout({ children }) {
           </main>
           <Footer />
       </SearchProvider>
+      </TranslationProvider>
       </body>
     </html>
   );
