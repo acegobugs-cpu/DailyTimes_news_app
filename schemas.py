@@ -1,6 +1,6 @@
 from __future__ import annotations
-from pydantic import BaseModel, EmailStr, constr
-from typing import List, Optional
+from pydantic import BaseModel, EmailStr, constr, ConfigDict, Json
+from typing import List, Optional, Any, Dict
 from datetime import datetime
 
 
@@ -79,23 +79,66 @@ class CategoryRes(CategoryBase):
     class Config:
         from_attributes = True
 
-class ArticleBase(BaseModel):
+class ArticleLocaleBase(BaseModel):
+    id: int
+    locale: str
     title: str
     slug: str
-    description: Optional[str] = None
-    media: Optional[str] = None  # JSON string
-    content: Optional[str] = None  # JSON string
+    editor_id: int
+    description: str
+    content: Optional[List[dict]] = None # JSON string
     published_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    tag: Optional[str] = None
-    is_published: Optional[int] = 0
+    
+class ArticleLocaleCreate(ArticleLocaleBase):
+    article_id: Optional[int] = None
+    pass
 
-class ArticleCreate(ArticleBase):
+class ArticleLocaleRes(ArticleLocaleBase):
+    article_id: int
+    published_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ArticleLocaleUpdate(BaseModel):
+    title: Optional[str]
+    slug: Optional[str]
+    description: Optional[str]
+    content: Optional[List[dict]] = None
+    updated_at: Optional[datetime] = None
+
+class ArticleBase(BaseModel):
+    id:int
+    tag: str
+    media: Optional[dict] = None  # JSON
+    translations: List[ArticleLocaleCreate]
+
+class ArticleCreate(BaseModel):
+    tag: str
+    media: Optional[dict] = None  # JSON
     category_ids: List[int]
+    translations: List[ArticleLocaleCreate]
+
+class ArticleUpdate(BaseModel):
+    tag: Optional[str]
+    media: Optional[dict] = None # e.g., [{ "type": "image", "url": "..."}]
+    updated_at: Optional[datetime] = None
+    
+    category_ids: Optional[List[int]]
+    translations: Optional[Dict[str, ArticleLocaleUpdate]]
+
+    class Config:
+        from_attributes = True
 
 class ArticleRes(ArticleBase):
     id: int
     categories: Optional[List[CategoryBase]] = []
+    translations: List[ArticleLocaleRes]
+    published_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
+

@@ -1,5 +1,5 @@
 # from xmlrpc.client import Boolean
-from sqlalchemy import Boolean, Integer, String, JSON, Table, Column, ForeignKey, DateTime, Text
+from sqlalchemy import Boolean, Integer, String, JSON, Table, Column, ForeignKey, DateTime, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
@@ -58,15 +58,31 @@ class Article(Base):
     __tablename__ = "articles"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(250), nullable=False)
-    slug = Column(String(250), unique=True, nullable=False)
-    description = Column(String, nullable=False)
+    tag = Column(String(50), nullable=False)
     media = Column(JSON, nullable=False)  # JSON string for media
-    content = Column(JSON, nullable=False)  # JSON string for content
     published_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    tag = Column(String(50), nullable=False)
-    is_published = Column(Boolean, default=False)
-
+    
     # Many-to-many relationship with Category
+    translations = relationship("ArticleLocale", back_populates="article", cascade="all, delete-orphan")
     categories = relationship("Category", secondary=article_category, back_populates="articles")
+
+class ArticleLocale(Base):
+    __tablename__ = "article_locale"
+    __table_args__ = (
+        UniqueConstraint("locale", "slug", name="unique_locale_slug"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    article_id = Column(Integer, ForeignKey("articles.id", ondelete="CASCADE"), nullable=False)
+    editor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    locale = Column(String(10), nullable=False)
+    title = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=False)  # Ensure (locale, slug) is unique manually
+    description = Column(Text, nullable=False)
+    content = Column(JSON, nullable=True)
+    published_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    article = relationship("Article", back_populates="translations")
+    editor = relationship("User")
