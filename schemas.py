@@ -80,7 +80,6 @@ class CategoryRes(CategoryBase):
         from_attributes = True
 
 class ArticleLocaleBase(BaseModel):
-    id: int
     locale: str
     title: str
     slug: str
