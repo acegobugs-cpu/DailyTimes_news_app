@@ -10,9 +10,10 @@ const API = axios.create({
 // Optional: manually handle revalidation with Next.js if needed
 const REVALIDATE_DURATION = 30 * 1000; // 60 seconds
 
-export async function fetchArticles() {
+export async function fetchArticles(lan = null) {
   try {
-    const res = await API.get('/articles');
+    const query = lan ? `?locale=${lan}`:'';
+    const res = await API.get(`/articles${query}`);
     return res.data;
   } catch (error) {
     if (error.response) {
@@ -23,9 +24,11 @@ export async function fetchArticles() {
   }
 }
 
-export async function fetchArticleById(slug) {
+
+export async function fetchArticleById(slug, lan=null) {
   try {
-    const res = await API.get(`/articles/slug/${slug}`);
+    const query = lan ? `?locale=${lan}`:'';
+    const res = await API.get(`/articles/${slug}${query}`);
     return res.data || null;
   } catch (error) {
     if (error.response) {
@@ -36,9 +39,10 @@ export async function fetchArticleById(slug) {
   }
 }
 
-export async function fetchArticlesByCategory(slug) {
+export async function fetchArticlesByCategory(slug, lan=null) {
   try {
-    const res = await API.get(`/categories/${slug}/articles`);
+    const query = lan?`?locale=${lan}`:'';
+    const res = await API.get(`/articles/category/${slug}${query}`);
     return res.data;
   } catch (error) {
     if (error.response) {

@@ -6,7 +6,7 @@ i18n
   .use(LanguageDetector) // Detect language from browser/localStorage
   .use(initReactI18next)
   .init({
-    fallbackLng: 'en',
+    fallbackLng: 'om',
     debug: true,
     interpolation: {
       escapeValue: false, // React already escapes
@@ -19,7 +19,7 @@ i18n
           no_media:"No media provided",
           breaking_news:"Breaking News",
           trendig:"trending",
-          more:"moreStoreis",
+          more:"moreStories",
           categories:"categories",
           allRightsReserved:"ALL rights reserved",
           about:"About",

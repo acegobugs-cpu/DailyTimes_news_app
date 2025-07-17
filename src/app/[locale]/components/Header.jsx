@@ -3,34 +3,48 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X} from 'lucide-react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import {HeaderSearchBar, useSearch} from './SearchBar';
+
 import { useTranslation } from 'react-i18next';
+import { usePathname, useRouter } from 'next/navigation';
+import { useLocale } from './TranslationProvider'; // from your context
+
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation();
-  const languages = ['en', 'om', 'am'];
+  const currentLocale = useLocale(); // from context or pathname
+  const router = useRouter();
+  const pathname = usePathname(); // e.g., /en/article/123
+  const languages = ['om', 'am', 'en'];
+
+  const handleChange = (e) => {
+    const lng = e.target.value;
+    if (lng === currentLocale) return;
+
+    i18n.changeLanguage(lng); // update i18n client-side
+    const segments = pathname.split('/');
+    segments[1] = lng; // replace old locale
+    const newPath = segments.join('/');
+    router.push(newPath); // navigate to new locale
+  };
 
   return (
-    <div className="flex space-x-4 justify-center border rounded text-black absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6">
+    <select
+      onChange={handleChange}
+      value={currentLocale}
+      className="p-2 border rounded text-black"
+    >
       {languages.map((lng) => (
-        <button
-          key={lng}
-          onClick={() => i18n.changeLanguage(lng)}
-          className={`px-4 transition-all
-            ${i18n.language === lng
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-black border-gray-300 hover:border-blue-400 hover:text-blue-600'}
-          `}
-        >
+        <option key={lng} value={lng}>
           {lng.toUpperCase()}
-        </button>
+        </option>
       ))}
-    </div>
+    </select>
   );
-
 }
 
 
 export default function Header({sections}) {
+  const lan = useLocale();
   const { searchValue } = useSearch();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
@@ -85,7 +99,7 @@ export default function Header({sections}) {
       <div className="max-w-7xl mx-auto p-4">
         <div className=" relative flex justify-between items-center">
           <h1 className="md:text-3xl text-xl font-serif font-bold tracking-widest text-[#211C84]">
-            <a href="/">The Daily Times</a>
+            <a href={`/${lan}`}>The Daily Times</a>
           </h1>
           <LanguageSwitcher className="p-2 border rounded text-black absolute left-1/2 -translate-x-1/2 -translate-y-1/2 "/>
           <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
@@ -111,8 +125,8 @@ export default function Header({sections}) {
           >
             {sections.map((item) => (
               <a
-                key={item.slug}
-                href={`/section/${item.slug}`}
+                key={item.id}
+                href={`/${lan}/section/${item.slug}`}
                 className="snap-start shrink-0 hover:underline whitespace-nowrap"
               >
                 {item.name}
@@ -146,7 +160,7 @@ export default function Header({sections}) {
         </button>
         <div className="flex flex-col space-y-6 p-4 pt-12 text-sm uppercase font-medium text-gray-700">
           {sections.map((item) => (
-            <a key={item.slug} href={`/section/${item.slug}`} className="hover:underline">
+            <a key={item.slug} href={`/${lan}/section/${item.slug}`} className="hover:underline">
               {item.name}
             </a>
           ))}
@@ -180,7 +194,7 @@ export default function Header({sections}) {
             {sections.map((item) => (
               <a
                 key={item.slug}
-                href={`/section/${item.slug}`}
+                href={`/${lan}/section/${item.slug}`}
                 className="snap-start shrink-0 hover:underline whitespace-nowrap"
               >
                 {item.name}

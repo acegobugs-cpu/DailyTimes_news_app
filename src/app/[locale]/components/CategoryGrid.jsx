@@ -1,8 +1,10 @@
 'use client';
 import { useTranslation } from 'react-i18next';
+import { useLocale } from './TranslationProvider';
 
-export default function CategoryGrid({ categories}) {
+export default function CategoryGrid({ categories, locale}) {
   const {t} = useTranslation();
+  const lan = useLocale();
   
   return (
     <section className="max-w-7xl mx-auto px-4 py-8">
@@ -13,12 +15,12 @@ export default function CategoryGrid({ categories}) {
           const articles = categoryArticles.slice(0, 3);
           return (
             <div key={category.id} className="">
-              <h4 className="font-bold text-lg mb-2 border-b border-t pb-1"><a href={`/section/${category.slug}`}>{category.name}</a></h4>
+              <h4 className="font-bold text-lg mb-2 border-b border-t pb-1"><a href={`/${lan}/section/${category.slug}`}>{category.name}</a></h4>
               {articles.length > 0 ? (
                 <ul className="space-y-2">
-                  {articles.map((article) => (
-                    <li key={article.slug} className="text-sm text-gray-700 hover:underline cursor-pointer">
-                       <a href={`/article/${article.slug}`}>{article.title}</a>
+                  {articles[0]?.translations?.filter((tr) => tr.locale === lan).map((tr) => (
+                    <li key={tr.id} className="text-sm text-gray-700 hover:underline cursor-pointer">
+                       <a href={`/${lan}/article/${tr.slug}`}>{tr.title}</a>
                     </li>
                   ))}
                 </ul>

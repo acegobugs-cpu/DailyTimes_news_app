@@ -55,6 +55,7 @@ export default function MediaRenderer({
           title="Embedded Media"
           className={`w-full aspect-video rounded ${className}`}
           frameBorder="0"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         ></iframe>

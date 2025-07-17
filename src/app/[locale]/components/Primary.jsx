@@ -1,9 +1,11 @@
 'use client';
 import MediaRenderer from "./MediaRenderer";
 import { useTranslation } from 'react-i18next';
+import { useLocale } from "./TranslationProvider";
 
 
 export default function Primary({ stories }) {
+  const lan = useLocale();
   const { t } = useTranslation();
 
   const topArticles = stories.filter((article) => ['breaking news', 'trending', 'primary'].includes(article.tag))
@@ -41,8 +43,8 @@ export default function Primary({ stories }) {
                   .map(cat => cat.name)
                   .join(' | ')}
               </p>
-              <h2 className="text-lg md:text-3xl font-serif font-bold order-2"><a href={`/article/${story.slug}`}>{story.title}</a></h2>
-              <p className="text-sm md:text-base text-gray-700 order-3">{story.description}</p>
+              <h2 className="text-lg md:text-3xl font-serif font-bold order-2"><a href={`/${lan}/article/${story.translations[0].slug}`}>{story.translations[0].title}</a></h2>
+              <p className="text-sm md:text-base text-gray-700 order-3">{story.translations[0].description}</p>
             </div>
           </article>
         ))}

@@ -1,5 +1,8 @@
+"use client";
 import MediaRenderer from "./MediaRenderer";
+import { useLocale } from "./TranslationProvider";
 export default function Secondary({stories}){
+    const lan = useLocale();
     return (
         <div className="md:col-span-1 md:order-1 md:border-r md:border-[#211C84]">
         {stories.map((story) => (
@@ -13,9 +16,9 @@ export default function Secondary({stories}){
                   .join(' | ')}
               </p>
               <h2 className="text-base md:text-xl font-serif font-bold mb-4">
-                <a href={`/article/${story.slug}`}>{story.title}</a>
+                <a href={`/${lan}/article/${story.translations[0].slug}`}>{story.translations[0].title}</a>
               </h2>
-              <p className="text-sm md:text-base text-gray-700 overflow-hidden">{story.description} </p>
+              <p className="text-sm md:text-base text-gray-700 overflow-hidden">{story.translations[0].description} </p>
             </div>
             <hr className="border-gray-300" />
           </article>
