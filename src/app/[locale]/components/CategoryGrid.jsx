@@ -19,7 +19,7 @@ export default function CategoryGrid({ categories, locale}) {
               {articles.length > 0 ? (
                 <ul className="space-y-2">
                   {articles[0]?.translations?.filter((tr) => tr.locale === lan).map((tr) => (
-                    <li key={tr.id} className="text-sm text-gray-700 hover:underline cursor-pointer">
+                    <li key={tr.slug} className="text-sm text-gray-700 hover:underline cursor-pointer">
                        <a href={`/${lan}/article/${tr.slug}`}>{tr.title}</a>
                     </li>
                   ))}
