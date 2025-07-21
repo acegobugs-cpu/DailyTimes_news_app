@@ -1,13 +1,15 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, File, UploadFile, APIRouter, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 from typing import List, Optional
 from database import get_db
 from models import User, Article, Category, article_category, ArticleLocale
 from schemas import ArticleRes, CategoryRes, ArticleCreate, CategoryCreate, CategoryUpdate, ArticleUpdate, ArticleLocaleRes, ArticleLocaleCreate
 from fastapi.responses import JSONResponse
 import os
+import hashlib
+import shutil
 from datetime import datetime
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
@@ -39,15 +41,52 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
-    ext = file.filename.split(".")[-1]
-    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    content = await file.read()
+    file_hash = hashlib.md5(content).hexdigest()
+    original_name = file.filename
+    ext = original_name.split(".")[-1]
+
+    # Create a deterministic filename using hash
+    filename = f"{file_hash}_{original_name}"
     filepath = os.path.join(UPLOAD_DIR, filename)
 
+    # If file already exists, return the existing path
+    if os.path.exists(filepath):
+        return JSONResponse(content={"url": f"/{filepath}"}, status_code=200)
+
+    # Save the file if it doesn't exist
     with open(filepath, "wb") as buffer:
-        content = await file.read()
         buffer.write(content)
 
     return JSONResponse(content={"url": f"/{filepath}"}, status_code=201)
+
+
+@app.get("/api/search", response_model=List[ArticleRes])
+def search_articles(q: str, db: Session = Depends(get_db)):
+    # Step 1: Find matching article_locale entries
+    sql = text("""
+        SELECT id, article_id FROM article_locale
+        WHERE MATCH(title, description) AGAINST(:q IN NATURAL LANGUAGE MODE)
+    """)
+    rows = db.execute(sql, {"q": q}).fetchall()
+
+    # Step 2: Build a map of article_id -> matching locale_id
+    article_to_locale = {row.article_id: row.id for row in rows}
+    matched_article_ids = list(article_to_locale.keys())
+
+    # Step 3: Fetch articles
+    articles = db.query(Article).filter(Article.id.in_(matched_article_ids)).all()
+
+    # Step 4: Filter translations to only include the matched locale
+    for article in articles:
+        matched_locale_id = article_to_locale.get(article.id)
+        article.translations = [
+            t for t in article.translations if t.id == matched_locale_id
+        ]
+
+    return articles
+
+
 
 @app.get("/api/articles", response_model=List[ArticleRes])
 async def get_articles(
@@ -372,6 +411,15 @@ async def delete_article(article_id: int, db: Session = Depends(get_db), current
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     db.delete(article)
+    db.commit()
+    return None
+
+@app.delete("/api/delete/locale/{locale_id}", status_code=204)
+async def delete_locale(locale_id: int, db:Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    locale = db.query(ArticleLocale).filter(ArticleLocale.id == locale_id).first()
+    if not locale:
+        raise HTTPException(status_code=404, detail="Locale not found")
+    db.delete(locale)
     db.commit()
     return None
 

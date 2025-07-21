@@ -59,6 +59,7 @@ class AuthorizedEmailRes(AuthorizedEmailBase):
         from_attributes = True
 
 class CategoryBase(BaseModel):
+    id: int
     name: str
     slug: str
 
@@ -73,7 +74,6 @@ class CategoryCreate(CategoryBase):
     pass
 
 class CategoryRes(CategoryBase):
-    id: int
     articles: Optional[List["ArticleBase"]] = []
 
     class Config:
@@ -94,6 +94,7 @@ class ArticleLocaleCreate(ArticleLocaleBase):
     pass
 
 class ArticleLocaleRes(ArticleLocaleBase):
+    id:int
     article_id: int
     published_at: datetime
     updated_at: datetime
