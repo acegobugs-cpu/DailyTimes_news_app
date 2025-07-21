@@ -14,24 +14,34 @@ function LanguageSwitcher() {
   const currentLocale = useLocale(); // from context or pathname
   const router = useRouter();
   const pathname = usePathname(); // e.g., /en/article/123
+  const [pendingLng, setPendingLng] = useState(null);
   const languages = ['om', 'am', 'en'];
 
   const handleChange = (e) => {
     const lng = e.target.value;
     if (lng === currentLocale) return;
 
-    i18n.changeLanguage(lng); // update i18n client-side
     const segments = pathname.split('/');
-    segments[1] = lng; // replace old locale
+    segments[1] = lng;
     const newPath = segments.join('/');
-    router.push(newPath); // navigate to new locale
+
+    setPendingLng(lng); // Store for later
+    router.push(newPath); // Navigate
   };
+
+  // Detect path change and then apply i18n update
+  useEffect(() => {
+    if (pendingLng && pathname.startsWith(`/${pendingLng}`)) {
+      i18n.changeLanguage(pendingLng);
+      setPendingLng(null); // reset
+    }
+  }, [pathname, pendingLng, i18n]);
 
   return (
     <select
       onChange={handleChange}
       value={currentLocale}
-      className="p-2 border rounded text-black"
+      className="md:p-2 p-1 border rounded text-black text-xs md:text-sm "
     >
       {languages.map((lng) => (
         <option key={lng} value={lng}>
@@ -101,7 +111,9 @@ export default function Header({sections}) {
           <h1 className="md:text-3xl text-xl font-serif font-bold tracking-widest text-[#211C84]">
             <a href={`/${lan}`}>The Daily Times</a>
           </h1>
-          <LanguageSwitcher className="p-2 border rounded text-black absolute left-1/2 -translate-x-1/2 -translate-y-1/2 "/>
+          <div className='hidden md:block'>
+          <LanguageSwitcher />
+          </div>
           <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -152,13 +164,16 @@ export default function Header({sections}) {
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
+        <div className='absolute top-4 md:hidden'>
+          <LanguageSwitcher />
+          </div>
         <button
           className="absolute top-4 right-4 md:hidden"
           onClick={() => setIsOpen(false)}
         >
           <X size={24} />
         </button>
-        <div className="flex flex-col space-y-6 p-4 pt-12 text-sm uppercase font-medium text-gray-700">
+        <div className="flex flex-col space-y-6 p-4 pt-16 text-sm uppercase font-medium text-gray-700">
           {sections.map((item) => (
             <a key={item.slug} href={`/${lan}/section/${item.slug}`} className="hover:underline">
               {item.name}

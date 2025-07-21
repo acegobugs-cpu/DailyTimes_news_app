@@ -1,16 +1,16 @@
 export const dynamic = 'force-dynamic';
 
-import { SearchProvider, MainSearchBar, SearchResults, useSearch  } from './components/SearchBar';
+import { SearchProvider, MainSearchBar} from './components/SearchBar';
 import Header from './components/Header';
+import CategoryGrid from './components/CategoryGrid';
 import Footer from "./components/Footer";
 import TranslationProvider from './components/TranslationProvider';
-import { fetchArticles, fetchCategories} from '../lib/fetch';
+import {fetchCategories} from '../lib/fetch';
 
 
 export default async function RootLayout({ children, params }) {
   const {locale} = await params || 'om';
-  const [articles, categories] = await Promise.all([
-    fetchArticles(),
+  const [categories] = await Promise.all([
     fetchCategories(),
   ]);
 
@@ -20,9 +20,9 @@ export default async function RootLayout({ children, params }) {
           <Header sections={categories} />
           <main>
             <MainSearchBar />
-            <SearchResults articles={articles} />
             {children}
           </main>
+          <CategoryGrid categories={categories} />
           <Footer />
       </SearchProvider>
       </TranslationProvider>

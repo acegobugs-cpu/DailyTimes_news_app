@@ -3,16 +3,14 @@ export const dynamic = 'force-dynamic';
 import Primary from './components/Primary';
 import Secondary from './components/Secondary';
 import MoreStories from './components/MoreStories';
-import CategoryGrid from './components/CategoryGrid';
-import { fetchArticles, fetchCategories} from '../lib/fetch';
+import { fetchArticles} from '../lib/fetch';
 
 
 
 export default async function Home({params}) {
   const {locale} = await params || 'om';
-  const [articles, categories] = await Promise.all([
-    fetchArticles(locale),
-    fetchCategories(),
+  const [articles] = await Promise.all([
+    fetchArticles(locale)
   ]);
 
   const primaryStories = articles.filter((article) =>['breaking news', 'trending', 'primary'].includes(article.tag));
@@ -26,7 +24,6 @@ export default async function Home({params}) {
         <Secondary stories={secondaryStories} />
       </section>
       <MoreStories stories={moreStories} />
-      <CategoryGrid categories={categories} />
     </>
   );
 }

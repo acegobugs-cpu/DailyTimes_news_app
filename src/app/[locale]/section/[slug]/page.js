@@ -31,7 +31,7 @@ export default async function CategoryPage({params}) {
           })
         ) : (
           <p className="text-center col-span-1 md:col-span-3 text-gray-700">
-            No stories found for {translations[0].slug}.
+            No stories found for {slug}.
           </p>
         )}
       </section>

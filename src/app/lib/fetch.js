@@ -65,3 +65,17 @@ export async function fetchCategories() {
     return [];
   }
 }
+
+export async function fetchSearch(q) {
+  try {
+    const query =`?q=${q}`;
+    const res = await API.get(`/search${query}`);
+    return res.data;
+  } catch (error) {
+    if (error.response) {
+      console.error('Search Status:', error.response.status);
+    }
+    console.error('Error fetching search:', error.message);
+    return [];
+  }
+}
