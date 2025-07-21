@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 // app/article/[id]/page.js
 import { fetchArticleById, fetchArticles } from '../../../lib/fetch';
-import ContentRenderer from '../../components/ContentRenderer';
-import MediaRenderer from '../../components/MediaRenderer';
+import ContentRenderer from '../../../components/ContentRenderer';
+import MediaRenderer from '../../../components/MediaRenderer';
 
 export async function generateStaticParams() {
   const articles = await fetchArticles();

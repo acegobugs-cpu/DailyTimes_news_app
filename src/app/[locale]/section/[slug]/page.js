@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { fetchArticlesByCategory} from '../../../lib/fetch';
-import MediaRenderer from '../../components/MediaRenderer';
+import MediaRenderer from '../../../components/MediaRenderer';
 
 export default async function CategoryPage({params}) {
   const { slug, locale } = await params;

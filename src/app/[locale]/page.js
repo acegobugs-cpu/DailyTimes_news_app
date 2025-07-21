@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 
-import Primary from './components/Primary';
-import Secondary from './components/Secondary';
-import MoreStories from './components/MoreStories';
+import Primary from '../components/Primary';
+import Secondary from '../components/Secondary';
+import MoreStories from '../components/MoreStories';
 import { fetchArticles} from '../lib/fetch';
 
 

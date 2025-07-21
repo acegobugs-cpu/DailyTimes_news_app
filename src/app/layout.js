@@ -1,3 +1,10 @@
+export const dynamic = 'force-dynamic';
+
+import Header from './components/Header';
+import CategoryGrid from './components/CategoryGrid';
+import Footer from "./components/Footer";
+import TranslationProvider from './components/TranslationProvider';
+import {fetchCategories} from './lib/fetch';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,11 +25,21 @@ export const metadata = {
 };
 
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const [categories] = await Promise.all([
+    fetchCategories(),
+  ]);
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
+        <TranslationProvider>
+            <Header sections={categories} />
+            <main>
+              {children}
+            </main>
+            <CategoryGrid categories={categories} />
+            <Footer />
+        </TranslationProvider>
       </body>
     </html>
   );

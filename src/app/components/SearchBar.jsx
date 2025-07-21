@@ -1,39 +1,16 @@
 // app/components/SearchBar.jsx
 'use client';
 import { Search } from 'lucide-react';
-import { createContext, useContext, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from './TranslationProvider';
 
 
-const SearchContext = createContext();
-
-export function SearchProvider({ children }) {
-  const [searchValue, setSearchValue] = useState('');
-
-  const handleSearch = (term) => {
-    setSearchValue(term);
-    // Replace with actual search logic
-  };
-
-  return (
-    <SearchContext.Provider value={{ searchValue, setSearchValue, handleSearch }}>
-      {children}
-    </SearchContext.Provider>
-  );
-}
-
-export function useSearch() {
-  return useContext(SearchContext);
-}
-
-
-export function MainSearchBar() {
+export function MainSearchBar({searchValue, handleSearch}) {
   const { t } = useTranslation();
   const lan = useLocale();
   const router = useRouter();
-  const { searchValue, handleSearch } = useSearch();
   
   const handleChange = (e) => {
     handleSearch(e.target.value); // Update searchValue and trigger search
@@ -60,10 +37,9 @@ export function MainSearchBar() {
 }
 
 
-export function HeaderSearchBar() {
+export function HeaderSearchBar({searchValue, handleSearch}) {
   const lan = useLocale();
   const router = useRouter();
-  const { searchValue, handleSearch } = useSearch();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleChange = (e) => {
