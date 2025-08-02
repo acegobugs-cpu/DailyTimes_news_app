@@ -6,7 +6,7 @@ from typing import List, Optional
 from database import get_db
 from models import User, Article, Category, article_category, ArticleLocale
 from schemas import ArticleRes, CategoryRes, ArticleCreate, CategoryCreate, CategoryUpdate, ArticleUpdate, ArticleLocaleRes, ArticleLocaleCreate
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import os
 import hashlib
 import shutil
@@ -59,6 +59,56 @@ async def upload_file(file: UploadFile = File(...), current_user: User = Depends
         buffer.write(content)
 
     return JSONResponse(content={"url": f"/{filepath}"}, status_code=201)
+
+
+@app.get("/api/uploads")
+async def list_uploaded_files():
+    try:
+        files = os.listdir(UPLOAD_DIR)
+        file_urls = [f"/{UPLOAD_DIR}/{filename}" for filename in files if os.path.isfile(os.path.join(UPLOAD_DIR, filename))]
+        return JSONResponse(content={"files": file_urls}, status_code=200)
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="Upload directory not found")
+
+
+@app.get("/api/upload/{filename}")
+async def get_file(filename: str):
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
+
+
+@app.put("/api/upload/{filename}")
+async def replace_file(
+    filename: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    content = await file.read()
+    with open(filepath, "wb") as buffer:
+        buffer.write(content)
+
+    return JSONResponse(content={"message": "File replaced", "url": f"/{filepath}"}, status_code=200)
+
+
+@app.delete("/api/upload/{filename}")
+async def delete_file(
+    filename: str,
+    current_user: User = Depends(get_current_user)
+):
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    os.remove(filepath)
+    return JSONResponse(content={"message": "File deleted"}, status_code=200)
+
 
 
 @app.get("/api/search", response_model=List[ArticleRes])

@@ -59,7 +59,8 @@ def login(data: UserLoginInput, db: Session = Depends(get_db)):
         "user": {
             "id": user.id,
             "uid": user.uid,
-            "username": user.uname
+            "username": user.uname,
+            "is_superuser": user.is_superuser
         }
     }
 @router.put("/api/users/{id}", response_model=UserRes)
