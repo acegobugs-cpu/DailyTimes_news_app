@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next';
 import { useLocale } from './TranslationProvider';
 
-export default function CategoryGrid({ categories, locale}) {
+export default function CategoryGrid({ categories}) {
   const {t} = useTranslation();
   const lan = useLocale();
   
@@ -18,7 +18,7 @@ export default function CategoryGrid({ categories, locale}) {
               <h4 className="font-bold text-lg mb-2 border-b border-t pb-1"><a href={`/${lan}/section/${category.slug}`}>{category.name}</a></h4>
               {articles.length > 0 ? (
                 <ul className="space-y-2">
-                  {articles[0]?.translations?.filter((tr) => tr.locale === lan).map((tr) => (
+                  {articles[0]?.translations?.filter((tr) => tr.locale === lan || 'om').map((tr) => (
                     <li key={tr.slug} className="text-sm text-gray-700 hover:underline cursor-pointer">
                        <a href={`/${lan}/article/${tr.slug}`}>{tr.title}</a>
                     </li>
