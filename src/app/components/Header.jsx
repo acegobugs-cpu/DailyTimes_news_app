@@ -3,10 +3,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X} from 'lucide-react';
 import { ChevronLeftIcon, ChevronRightIcon, CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/solid';
 import { Listbox } from "@headlessui/react";
-import {MainSearchBar, HeaderSearchBar, useSearch} from './SearchBar';
+import {MainSearchBar, HeaderSearchBar} from './SearchBar';
 
 import { useTranslation } from 'react-i18next';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter} from 'next/navigation';
 import { useLocale } from './TranslationProvider'; // from your context
 
 
@@ -37,11 +37,12 @@ function LanguageSwitcher() {
   }, [pathname, pendingLng, i18n]);
 
   return (
-    <div className="relative w-28 md:w-36 z-50">
-      <Listbox value={currentLocale} onChange={handleChange}>
-        <div className="relative">
-          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-2 pl-3 pr-10 text-left border border-gray-300 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
-            <span className="block truncate">{currentLocale.toUpperCase()}</span>
+    currentLocale && (
+      <div className="relative w-28 md:w-36 z-50">
+        <Listbox value={currentLocale} onChange={handleChange}>
+          <div className="relative">
+            <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-2 pl-3 pr-10 text-left border border-gray-300 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
+              <span className="block truncate">{currentLocale.toUpperCase()}</span>
             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
               <ChevronUpDownIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
             </span>
@@ -76,6 +77,7 @@ function LanguageSwitcher() {
         </div>
       </Listbox>
     </div>
+    )
   );
 }
 
@@ -201,7 +203,7 @@ export default function Header({sections}) {
         >
           <div className='absolute top-4 md:hidden'>
             <LanguageSwitcher />
-            </div>
+          </div>
           <button
             className="absolute top-4 right-4 md:hidden"
             onClick={() => setIsOpen(false)}

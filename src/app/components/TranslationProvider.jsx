@@ -1,18 +1,19 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation'; 
+import { useParams, notFound } from 'next/navigation'; 
 import i18n from '../../i18n'; // make sure this path is correct
 
 const LocaleContext = createContext();
 export const useLocale = () => useContext(LocaleContext);
+
 
 export default function TranslationProvider({ children }) {
   const { locale } = useParams();
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (i18n.localeguage !== locale) {
+    if (i18n.language !== locale) {
       i18n.changeLanguage(locale).then(() => setIsLoaded(true));
     } else {
       setIsLoaded(true);

@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 
 const supportedLocales = ['om', 'am', 'en'];
