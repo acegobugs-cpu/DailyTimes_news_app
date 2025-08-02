@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Menu, X} from 'lucide-react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, ChevronRightIcon, CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/solid';
+import { Listbox } from "@headlessui/react";
 import {MainSearchBar, HeaderSearchBar, useSearch} from './SearchBar';
 
 import { useTranslation } from 'react-i18next';
@@ -11,47 +12,72 @@ import { useLocale } from './TranslationProvider'; // from your context
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation();
-  const currentLocale = useLocale(); // from context or pathname
+  const currentLocale = useLocale(); // e.g., 'en'
   const router = useRouter();
-  const pathname = usePathname(); // e.g., /en/article/123
+  const pathname = usePathname();    // e.g., /en/article/123
   const [pendingLng, setPendingLng] = useState(null);
-  const languages = ['om', 'am', 'en'];
+  const languages = ["om", "am", "en"];
 
-  const handleChange = (e) => {
-    const lng = e.target.value;
+  const handleChange = (lng) => {
     if (lng === currentLocale) return;
 
-    const segments = pathname.split('/');
+    const segments = pathname.split("/");
     segments[1] = lng;
-    const newPath = segments.join('/');
+    const newPath = segments.join("/");
 
-    setPendingLng(lng); // Store for later
-    router.push(newPath); // Navigate
+    setPendingLng(lng);
+    router.push(newPath);
   };
 
-  // Detect path change and then apply i18n update
   useEffect(() => {
     if (pendingLng && pathname.startsWith(`/${pendingLng}`)) {
       i18n.changeLanguage(pendingLng);
-      setPendingLng(null); // reset
+      setPendingLng(null);
     }
   }, [pathname, pendingLng, i18n]);
 
   return (
-    <select
-      onChange={handleChange}
-      value={currentLocale}
-      className="md:p-2 p-1 border rounded text-black text-xs md:text-sm "
-    >
-      {languages.map((lng) => (
-        <option key={lng} value={lng}>
-          {lng.toUpperCase()}
-        </option>
-      ))}
-    </select>
+    <div className="relative w-28 md:w-36 z-50">
+      <Listbox value={currentLocale} onChange={handleChange}>
+        <div className="relative">
+          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-2 pl-3 pr-10 text-left border border-gray-300 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
+            <span className="block truncate">{currentLocale.toUpperCase()}</span>
+            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+              <ChevronUpDownIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
+            </span>
+          </Listbox.Button>
+
+          <Listbox.Options className="absolute mt-1 w-full max-h-60 overflow-auto rounded-md bg-white py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            {languages.map((lng) => (
+              <Listbox.Option
+                key={lng}
+                value={lng}
+                className={({ active }) =>
+                  `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
+                    active ? "bg-blue-100 text-blue-900" : "text-gray-900"
+                  }`
+                }
+              >
+                {({ selected }) => (
+                  <>
+                    <span className={`block truncate ${selected ? "font-semibold" : "font-normal"}`}>
+                      {lng.toUpperCase()}
+                    </span>
+                    {selected && (
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
+                        <CheckIcon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                    )}
+                  </>
+                )}
+              </Listbox.Option>
+            ))}
+          </Listbox.Options>
+        </div>
+      </Listbox>
+    </div>
   );
 }
-
 
 export default function Header({sections}) {
   const lan = useLocale();
@@ -142,7 +168,7 @@ export default function Header({sections}) {
             <nav
               ref={navRef}
               className="flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory 
-                        space-x-3 text-sm uppercase font-medium text-gray-700 px-20"
+                        space-x-3 text-sm uppercase font-medium text-gray-700 mx-10"
             >
               {sections.map((item) => (
                 <a
@@ -213,7 +239,7 @@ export default function Header({sections}) {
             <nav
               ref={scrollRef}
               className="flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory 
-                        space-x-3 text-sm uppercase font-medium text-gray-700 px-10"
+                        space-x-3 text-sm uppercase font-medium text-gray-700 mx-10"
             >
               {sections.map((item) => (
                 <a
