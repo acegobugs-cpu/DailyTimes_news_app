@@ -18,7 +18,7 @@ i18n
           media:"media",
           no_media:"No media provided",
           breaking_news:"Breaking News",
-          trendig:"trending",
+          trending:"trending",
           more:"moreStories",
           categories:"categories",
           allRightsReserved:"ALL rights reserved",

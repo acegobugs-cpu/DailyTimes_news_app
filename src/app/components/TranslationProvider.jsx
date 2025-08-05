@@ -9,10 +9,16 @@ export const useLocale = () => useContext(LocaleContext);
 
 
 export default function TranslationProvider({ children }) {
-  const { locale } = useParams();
   const [isLoaded, setIsLoaded] = useState(false);
+  const languages = ['om', 'am', 'en', 'sw']; // supported languages
+  const { locale } = useParams();
 
   useEffect(() => {
+    if (!languages.includes(locale)) {
+      notFound();
+      return null;
+    }
+
     if (i18n.language !== locale) {
       i18n.changeLanguage(locale).then(() => setIsLoaded(true));
     } else {
@@ -24,7 +30,7 @@ export default function TranslationProvider({ children }) {
   if (!isLoaded) return null;
 
   return (
-    <LocaleContext.Provider value={locale}>
+    <LocaleContext.Provider value={ locale }>
       {children}
     </LocaleContext.Provider>
   );

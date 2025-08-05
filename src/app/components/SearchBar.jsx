@@ -38,6 +38,7 @@ export function MainSearchBar({searchValue, handleSearch}) {
 
 
 export function HeaderSearchBar({searchValue, handleSearch}) {
+  const { t } = useTranslation();
   const lan = useLocale();
   const router = useRouter();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -68,7 +69,7 @@ export function HeaderSearchBar({searchValue, handleSearch}) {
           value={searchValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Search articles..."
+          placeholder={t('search_articles')}
           className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#211C84]"
         />
       </div>

@@ -212,7 +212,11 @@ export default function Header({sections}) {
           </button>
           <div className="flex flex-col space-y-6 p-4 pt-16 text-sm uppercase font-medium text-gray-700">
             {sections.map((item) => (
-              <a key={item.slug} href={`/${lan}/section/${item.slug}`} className="hover:underline">
+              <a
+                key={item.id}
+                href={`/${lan}/section/${item.slug}`}
+                className="snap-start shrink-0 hover:underline whitespace-nowrap"
+              >
                 {item.name}
               </a>
             ))}
@@ -245,7 +249,7 @@ export default function Header({sections}) {
             >
               {sections.map((item) => (
                 <a
-                  key={item.slug}
+                  key={item.id}
                   href={`/${lan}/section/${item.slug}`}
                   className="snap-start shrink-0 hover:underline whitespace-nowrap"
                 >

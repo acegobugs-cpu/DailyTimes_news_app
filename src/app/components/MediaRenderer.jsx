@@ -26,7 +26,7 @@ export default function MediaRenderer({
 
     case "video":
       return (
-        <iframe
+        <video
           src={src}
           className={`rounded ${className}`}
           controls={controls}
@@ -34,7 +34,7 @@ export default function MediaRenderer({
           loop={loop}
         >
           Your browser does not support the video tag.
-        </iframe>
+        </video>
       );
 
     case "audio":
