@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 // app/article/[id]/page.js
 import { fetchArticleById, fetchArticles } from '../../../lib/fetch';
-import ContentRenderer from '../../../components/ContentRenderer';
 import MediaRenderer from '../../../components/MediaRenderer';
+import TipTapRenderer from '../../../components/TipTapRenderer';
 
 export async function generateStaticParams() {
   const articles = await fetchArticles();
@@ -56,24 +56,23 @@ export default async function ArticlePage({ params }) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-8">
         <article>
-          <h1 className="text-2xl md:text-4xl font-serif font-bold text-[#211C84] mb-4">
+          <h1 className="text-2xl md:text-4xl font-serif font-bold text-[#211C84] mb-4 text-center">
             {article.translations[0].title}
           </h1>
           <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="flex-1">
+            {/* <div className="flex-1">
               <p className="text-sm text-gray-500">
                 {Array.isArray(article.categories) && article.categories.length > 0
                   ? article.categories.map(cat=> cat.name).join(' | ')
                   : 'Uncategorized'}
               </p>
-              <p className="text-sm text-gray-500">Author: {article.author} | {article.date}</p>
-            </div>
+            </div> */}
             <div className="flex-1">
               {article.media&&<MediaRenderer media={typeof article.media === 'string' ? JSON.parse(article.media) : article.media} className="w-full h-auto object-cover aspect-video" autoPlay  />}
             </div>
           </div>
           <p className="text-base text-gray-700 mb-6 line-clamp-3">{article.translations[0].description}</p>
-          {article.translations[0].content&&<ContentRenderer content={(() => {
+          {article.translations[0].content&&<TipTapRenderer content={(() => {
             try {
               return (article.translations[0].content);
             } catch (e) {
