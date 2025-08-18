@@ -85,7 +85,7 @@ class ArticleLocaleBase(BaseModel):
     slug: str
     editor_id: int
     description: str
-    content: Optional[List[dict]] = None # JSON string
+    content: Optional[dict] = None # JSON string
     published_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
@@ -106,7 +106,7 @@ class ArticleLocaleUpdate(BaseModel):
     title: Optional[str]
     slug: Optional[str]
     description: Optional[str]
-    content: Optional[List[dict]] = None
+    content: Optional[dict] = None
     updated_at: Optional[datetime] = None
 
 class ArticleBase(BaseModel):
