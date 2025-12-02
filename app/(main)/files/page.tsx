@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { apiClient } from "@/app/lib/api";
-import { MediaFile } from "@/app/types/types";
 
 export default function Media() {
   return (
@@ -16,7 +15,9 @@ export default function Media() {
 }
 
 function UploadsEditor() {
-  const [uploadedFiles, setUploadedFiles] = useState<MediaFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    { url: string; filename: string; size?: number }[]
+  >([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -24,8 +25,21 @@ function UploadsEditor() {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const mediaFiles = await apiClient.getMedia();
-        setUploadedFiles(mediaFiles);
+        const response = await apiClient.getMedia(); // This should return {files: string[]}
+        console.log("Fetched media response:", response);
+
+        // Convert the array of URLs to objects
+        const filesWithMetadata = response.files.map((fileUrl: string) => {
+          // Extract filename from URL
+          const filename = fileUrl.split("/").pop() || fileUrl;
+          return {
+            url: fileUrl,
+            filename: filename,
+            // Note: Size is not available from the current API response
+          };
+        });
+
+        setUploadedFiles(filesWithMetadata);
       } catch (error) {
         console.error("Error fetching media:", error);
       }
@@ -40,13 +54,20 @@ function UploadsEditor() {
     try {
       setUploading(true);
       const result = await apiClient.uploadFile(formData);
-      alert("Upload successful: " + result.url);
+      alert("Upload successful: " + result);
 
       // Refresh the files list
-      const mediaFiles = await apiClient.getMedia();
-      setUploadedFiles(mediaFiles);
+      const response = await apiClient.getMedia();
+      const filesWithMetadata = response.files.map((fileUrl: string) => {
+        const filename = fileUrl.split("/").pop() || fileUrl;
+        return {
+          url: fileUrl,
+          filename: filename,
+        };
+      });
+      setUploadedFiles(filesWithMetadata);
     } catch (err) {
-      alert("Upload failed: " + (err as Error).message);
+      alert("Uploadkkkk failed: " + (err as Error).message);
     } finally {
       setUploading(false);
     }
@@ -63,7 +84,13 @@ function UploadsEditor() {
   const handleDeleteSelected = async () => {
     for (const fileUrl of selectedFiles) {
       try {
-        await apiClient.delMedia(fileUrl);
+        // Extract filename from URL for deletion
+        const filename = fileUrl.split("/").pop();
+        if (filename) {
+          await apiClient.delMedia(filename);
+          console.log("Deleted", filename);
+        }
+        // Remove from local state
         setUploadedFiles((prev) => prev.filter((f) => f.url !== fileUrl));
       } catch (err) {
         alert("Failed to delete " + fileUrl + ": " + (err as Error).message);
@@ -104,7 +131,7 @@ function UploadsEditor() {
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {uploadedFiles.length > 0 ? (
-            uploadedFiles.map((file) => {
+            uploadedFiles.map((file, index) => {
               const isImage = /\.(png|jpe?g|gif|bmp|webp)$/i.test(
                 file.filename
               );
@@ -113,9 +140,9 @@ function UploadsEditor() {
 
               return (
                 <div
-                  key={file.id}
+                  key={index} // Use index as key since we don't have an ID
                   onClick={() => toggleSelect(file.url)}
-                  className={`border-2 border-gray-200 rounded-lg p-2 cursor-pointer transition-all hover:shadow-md ${
+                  className={`border-2 border-gray-200 rounded-lg p-2 cursor-pointer transition-all hover:shadow-md relative ${
                     isSelected
                       ? "ring-2 ring-blue-500 border-blue-500"
                       : "hover:border-gray-300"
@@ -123,14 +150,23 @@ function UploadsEditor() {
                 >
                   {isImage && (
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${file.url}`}
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}${
+                        file.url
+                      }`}
                       className="w-full h-32 object-cover rounded"
                       alt={file.filename}
+                      onError={(e) => {
+                        // Fallback if image fails to load
+                        (e.target as HTMLImageElement).src =
+                          "/placeholder-image.png";
+                      }}
                     />
                   )}
                   {isVideo && (
                     <video
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${file.url}`}
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}${
+                        file.url
+                      }`}
                       className="w-full h-32 object-cover rounded"
                       controls={false}
                       muted
@@ -149,9 +185,7 @@ function UploadsEditor() {
                     >
                       {file.filename}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
+                    {/* Removed size display since it's not in the API response */}
                   </div>
                   {isSelected && (
                     <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -183,7 +217,7 @@ function UploadsEditor() {
 
 interface SelectedMediaProps {
   files: string[];
-  uploadedFiles: MediaFile[];
+  uploadedFiles: { url: string; filename: string; size?: number }[];
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -211,27 +245,28 @@ function SelectedMedia({
 
         <div className="max-h-60 overflow-y-auto mb-6">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {selectedFileData.map((file) => {
+            {selectedFileData.map((file, index) => {
               const isImage = /\.(png|jpe?g|gif|bmp|webp)$/i.test(
                 file.filename
               );
               const isVideo = /\.(mp4|webm|ogg|mov|avi)$/i.test(file.filename);
 
               return (
-                <div
-                  key={file.id}
-                  className="border border-gray-200 rounded p-2"
-                >
+                <div key={index} className="border border-gray-200 rounded p-2">
                   {isImage && (
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${file.url}`}
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}${
+                        file.url
+                      }`}
                       className="w-full h-20 object-cover rounded"
                       alt={file.filename}
                     />
                   )}
                   {isVideo && (
                     <video
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${file.url}`}
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}${
+                        file.url
+                      }`}
                       className="w-full h-20 object-cover rounded"
                       controls={false}
                       muted

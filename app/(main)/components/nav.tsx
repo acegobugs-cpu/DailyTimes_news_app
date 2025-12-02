@@ -20,7 +20,7 @@ interface HeaderProps {
 }
 
 export default function Nav({ panel, setPanel }: HeaderProps) {
-  const { logout, user } = useAuth();
+  const { user, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function Nav({ panel, setPanel }: HeaderProps) {
           </button>
         </div>
 
-        <h1 className="text-2xl text-blue-500">Prime Media</h1>
+        <h1 className="text-2xl text-blue-500">The daily times</h1>
 
         {/* Search */}
         <div className="hidden sm:flex items-center px-2 border border-gray-600 rounded-md hover:border-blue-500 focus:placeholder-blue-500 transition-all">
@@ -123,10 +123,10 @@ export default function Nav({ panel, setPanel }: HeaderProps) {
             </div>
             <div className="hidden md:flex flex-col items-start">
               <p className="text-blue-500 text-sm font-bold leading-none">
-                Alula
+                {user?.username}
               </p>
               <p className="text-[var(--Gray-fr)] text-xs leading-none">
-                Alula@matrix.com
+                {user?.email}
               </p>
             </div>
             <ChevronDown

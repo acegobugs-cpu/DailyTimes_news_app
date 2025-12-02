@@ -125,7 +125,7 @@ function UserList({ onEditUser }: UserListProps) {
     fetchUsers();
   }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
         await apiClient.deleteUser(id);
@@ -207,7 +207,7 @@ function EmailList() {
     fetchEmails();
   }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (confirm("Are you sure you want to delete this email?")) {
       try {
         await apiClient.deleteEmails(id);

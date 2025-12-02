@@ -13,6 +13,7 @@ import {
   Category,
   ArticleTranslation,
   Media,
+  ArticleUpdate,
 } from "@/app/types/types";
 
 const TextEditor = dynamic(() => import("../components/textEditor.client"), {
@@ -26,11 +27,11 @@ interface ArticleFormData {
   slug: string;
   tag: string;
   description: string;
-  media: Media | string;
+  media: Media;
   content: any;
-  editor_id: string;
+  editor_id: number;
   is_published: number;
-  category_ids: string[];
+  category_ids: number[];
 }
 
 export default function Articles() {
@@ -265,9 +266,13 @@ function ArticleForm({ onSuccess }: { onSuccess: () => void }) {
     slug: "",
     tag: "primary",
     description: "",
-    media: "",
+    media: {
+      mediaType: "image",
+      source: "external",
+      url: "",
+    },
     content: {},
-    editor_id: "",
+    editor_id: 0,
     is_published: 0,
     category_ids: [],
   });
@@ -298,13 +303,15 @@ function ArticleForm({ onSuccess }: { onSuccess: () => void }) {
       category_ids: formData.category_ids,
       translations: [
         {
+          id: 0,
           locale: formData.locale,
           title: formData.title,
-          slug: formData.slug || "primary",
+          slug: formData.slug,
           description: formData.description,
           content: formData.content,
-          editor_id: user?.id || "",
-          published_at: new Date().toISOString(),
+          editor_id: user?.id || 0,
+          published_at: formData.is_published ? new Date().toISOString() : "",
+          updated_at: new Date().toISOString(),
         },
       ],
     };
@@ -318,9 +325,13 @@ function ArticleForm({ onSuccess }: { onSuccess: () => void }) {
         slug: "",
         tag: "primary",
         description: "",
-        media: "",
+        media: {
+          mediaType: "image",
+          source: "external",
+          url: "",
+        },
         content: {},
-        editor_id: "",
+        editor_id: 0,
         is_published: 0,
         category_ids: [],
       });
@@ -473,10 +484,13 @@ function LocaleForm({
 }) {
   if (!isOpen) return null;
 
+  const [User] = useState(user);
   const [formData, setFormData] = useState({
     locale: "am",
     title: "",
     slug: "",
+    editor_id: 0,
+    article_id: 0,
     description: "",
     content: "",
   });
@@ -508,8 +522,8 @@ function LocaleForm({
   const handleSubmit = async () => {
     try {
       await apiClient.addLocale({
+        editor_id: User?.id || 0,
         article_id: article.id,
-        editor_id: user?.id || "",
         locale: formData.locale,
         title: formData.title,
         slug: formData.slug,
@@ -536,6 +550,7 @@ function LocaleForm({
               <span className="text-purple-600">
                 {article.translations[0]?.title}
               </span>
+              {User.id}
             </h2>
             <button
               onClick={onClose}
@@ -628,13 +643,20 @@ function EditArticleModal({
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedLocale, setSelectedLocale] = useState("om");
+  const [newLocale, setNewLocale] = useState("om");
+  const [changingLocale, setChangingLocale] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     tag: article.tag || "",
     category_ids: article.categories?.map((c) => c.id) || [],
-    media: article.media || {},
-    translations: {} as { [key: string]: any },
+    media: article.media || {
+      mediaType: "image",
+      source: "external",
+      url: "",
+    },
+    // translations is a map from locale -> translation object
+    translations: {} as Record<string, Partial<ArticleTranslation>>,
   });
 
   useEffect(() => {
@@ -652,14 +674,18 @@ function EditArticleModal({
   useEffect(() => {
     const translations: { [key: string]: any } = {};
     article.translations.forEach((t) => {
-      translations[t.locale] = {
-        id: t.id,
-        title: t.title || "",
-        slug: t.slug || "",
-        description: t.description || "",
-        content: t.content || [],
-        editor_id: user?.id || "",
-      };
+      if (t.locale && typeof t.locale === "string") {
+        translations[t.locale] = {
+          id: t.id,
+          locale: t.locale || "",
+          title: t.title || "",
+          slug: t.slug || "",
+          description: t.description || "",
+          content: t.content || [],
+          updated_at: new Date().toISOString(),
+        };
+      }
+      setSelectedLocale(article.translations[0]?.locale || "om");
     });
     setFormData((prev) => ({ ...prev, translations }));
   }, [article, user]);
@@ -689,7 +715,7 @@ function EditArticleModal({
     updateTranslation(selectedLocale, { title, slug });
   };
 
-  const handleDeleteTranslation = async (id: string) => {
+  const handleDeleteTranslation = async (id: number) => {
     if (!id) return;
     try {
       await apiClient.deleteLocale(id);
@@ -719,7 +745,27 @@ function EditArticleModal({
 
   const handleSubmit = async () => {
     try {
-      const payload = { ...formData };
+      const translationsDict: Record<string, any> = {};
+
+      Object.entries(formData.translations).forEach(([locale, translation]) => {
+        translationsDict[locale] = {
+          id: translation.id,
+          locale: translation.locale || locale,
+          title: translation.title || "",
+          slug: translation.slug || "",
+          description: translation.description || "",
+          content: translation.content || [],
+          updated_at: new Date().toISOString(),
+        };
+      });
+      const payload: Partial<ArticleUpdate> = {
+        tag: formData.tag,
+        category_ids: formData.category_ids,
+        media: formData.media,
+        updated_at: new Date().toISOString(),
+        translations: translationsDict,
+      };
+      console.log("Submitting payload:", payload);
       await apiClient.updateArticle(article.id, payload);
       setSuccess(true);
       await refreshArticles();
@@ -765,17 +811,84 @@ function EditArticleModal({
                 ))}
               </select>
 
-              <button
-                onClick={() =>
-                  handleDeleteTranslation(
-                    formData.translations[selectedLocale]?.id
-                  )
-                }
-                className="bg-red-600 text-white text-sm p-2 rounded hover:bg-red-700 transition-colors"
-                disabled={!formData.translations[selectedLocale]?.id}
-              >
-                Delete Translation
-              </button>
+              <div>
+                <div>
+                  {changingLocale ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={newLocale}
+                        onChange={(e) => setNewLocale(e.target.value)}
+                        className="border border-gray-300 bg-white text-gray-800 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="om">OM</option>
+                        <option value="am">AM</option>
+                        <option value="en">EN</option>
+                        <option value="sw">SW</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          // If the new locale is the same as the currently selected one, just close the changer.
+                          if (newLocale === selectedLocale) {
+                            setChangingLocale(false);
+                            return;
+                          }
+
+                          const currentTranslation =
+                            formData.translations[selectedLocale];
+                          if (!currentTranslation) {
+                            setChangingLocale(false);
+                            return;
+                          }
+
+                          // Move the translation to the new locale key and update its locale field.
+                          setFormData((prev) => {
+                            const { [selectedLocale]: _removed, ...rest } =
+                              prev.translations;
+                            return {
+                              ...prev,
+                              translations: {
+                                ...rest,
+                                [newLocale]: {
+                                  ...currentTranslation,
+                                  locale: newLocale,
+                                },
+                              },
+                            };
+                          });
+
+                          // Switch the UI to the new locale and close the changer.
+                          setSelectedLocale(newLocale);
+                          setChangingLocale(false);
+                        }}
+                        className="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition-colors"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setChangingLocale(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+                      title="Change locale of current translation"
+                    >
+                      Change Locale
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const id = formData.translations[selectedLocale]?.id;
+                    if (typeof id === "number") {
+                      handleDeleteTranslation(id);
+                    }
+                  }}
+                  className="bg-red-600 text-white text-sm p-2 rounded hover:bg-red-700 transition-colors"
+                  disabled={!formData.translations[selectedLocale]?.id}
+                >
+                  Delete Translation
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 rounded-lg">

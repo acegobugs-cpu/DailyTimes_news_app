@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api";
 
@@ -18,6 +19,7 @@ export default function Register() {
   const params = useParams();
   const slug = params.slug as string;
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
 
   const [form, setForm] = useState<RegisterFormData>({
     email: "",
@@ -81,7 +83,7 @@ export default function Register() {
           <p className="text-gray-600 mt-2">Complete your registration</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
           <div>
             <input
               type="email"
@@ -93,7 +95,6 @@ export default function Register() {
               required
             />
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <input
@@ -118,7 +119,6 @@ export default function Register() {
               />
             </div>
           </div>
-
           <div>
             <input
               type="text"
@@ -129,7 +129,6 @@ export default function Register() {
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
-
           <div>
             <input
               type="text"
@@ -141,44 +140,49 @@ export default function Register() {
               required
             />
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
-                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <Eye /> : <EyeOff />}
+              </button>
             </div>
-            <div>
+
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="confirmPassword"
                 placeholder="Confirm Password"
                 value={form.confirmPassword}
                 onChange={handleChange}
-                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
                 required
               />
             </div>
           </div>
-
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
-
           {success && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-green-600 text-sm">{success}</p>
             </div>
           )}
-
           <button
             type="submit"
             disabled={isLoading}

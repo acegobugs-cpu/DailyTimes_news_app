@@ -1,21 +1,15 @@
 import { useState, useEffect } from "react";
+import { Media } from "@/app/types/types";
 import { apiClient } from "@/app/lib/api";
 
-interface MediaData {
-  mediaType: "image" | "video" | "embed";
-  source: "external" | "local";
-  url: string;
-  alt?: string;
-}
-
 interface MediaBlockProps {
-  data: MediaData;
-  onChange: (data: MediaData) => void;
+  data: Media;
+  onChange: (data: Media) => void;
 }
 
 interface SelectMediaProps {
-  data: MediaData;
-  onChange: (data: MediaData) => void;
+  data: Media;
+  onChange: (data: Media) => void;
   setShowModal: (show: boolean) => void;
   handleFileUpload: (file: File) => void;
 }

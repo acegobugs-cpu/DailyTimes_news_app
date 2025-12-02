@@ -9,10 +9,10 @@ type PanelProps = {
 };
 
 export default function Panel({ panel }: PanelProps) {
-  const { logout, user } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
+  console.log("stored", user);
   const handleLogout = () => {
     logout();
     router.push("/login");

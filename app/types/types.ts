@@ -4,13 +4,17 @@ export interface LoginData {
 }
 
 export interface RegisterData {
+  fname: string;
+  lname: string;
+  mname?: string;
+  uname: string;
   email: string;
   password: string;
-  name: string;
 }
 
 export interface User {
-  id: string;
+  id: number;
+  uid: string;
   email: string;
   username?: string;
   name: string;
@@ -21,22 +25,19 @@ export interface User {
 }
 
 export interface Article {
+  id: number;
+  tag: string;
+  media?: Media;
+  category_ids: number[];
   categories: Category[];
   translations: ArticleTranslation[];
-  media: any;
-  id: string;
-  title: string;
-  content: string;
-  slug: string;
-  locale: string;
-  published: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface ArticleTranslation {
-  id: string;
-  article_id: string;
+  id: number;
+  article_id?: number;
   locale: string;
   title: string;
   slug: string;
@@ -44,19 +45,27 @@ export interface ArticleTranslation {
   content?: any; // JSON content from Tiptap editor
   editor_id: number;
   published_at?: string;
-  created_at?: string;
   updated_at?: string;
 }
 
+export interface ArticleUpdate {
+  id: number;
+  tag: string;
+  media?: Media;
+  category_ids: number[];
+  categories?: Category[];
+  translations: Record<string, Partial<ArticleTranslation>>;
+  updated_at: string;
+}
+
 export interface Category {
-  id: string;
+  id: number;
   name: string;
   slug: string;
-  description?: string;
 }
 
 export interface Email {
-  id: string;
+  id: number;
   email: string;
   slug: string;
   inviter_id?: string;
@@ -78,11 +87,9 @@ export interface Media {
   source: "external" | "local";
   url: string;
   alt?: string;
-  width?: string;
-  height?: string;
 }
 
-export interface RegisterData {
+export interface RegisterFormData {
   email: string;
   fname: string;
   mname?: string;

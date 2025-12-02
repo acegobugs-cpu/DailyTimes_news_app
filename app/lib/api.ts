@@ -3,55 +3,54 @@
 import {
   LoginData,
   RegisterData,
-  // AuthResponse,
+  AuthResponse,
   User,
   Article,
   Category,
   Email,
   MediaFile,
-  // ArticleLocale
+  ArticleTranslation,
+  ArticleUpdate,
 } from "../types/types";
 
 class ApiClient {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    // this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    this.baseURL = ""; // Use proxy endpoint
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
+    // const url = `${this.baseURL}${endpoint}`;
+    const url = `/api/proxy${endpoint}`;
+    const isFormData = options.body instanceof FormData;
 
     const config: RequestInit = {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
       ...options,
+      credentials: "include", // This is correct
     };
 
-    // Add auth token if available
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers = {
-          ...config.headers,
-          Authorization: `Bearer ${token}`,
-        };
-      }
+    if (!isFormData) {
+      config.headers = {
+        "Content-Type": "application/json",
+        ...options.headers,
+      };
+    } else {
+      // For FormData, keep any headers passed in options
+      config.headers = options.headers;
     }
 
     try {
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-        }
+        // if (response.status === 401) {
+        //   window.location.href = "/login";
+        // }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -89,7 +88,7 @@ class ApiClient {
     return this.request<Email[]>("/api/getEmails");
   }
 
-  async deleteEmails(id: string) {
+  async deleteEmails(id: number) {
     return this.request(`/api/delEmails/${id}`, {
       method: "DELETE",
     });
@@ -100,13 +99,13 @@ class ApiClient {
     return this.request<User[]>("/api/users");
   }
 
-  async deleteUser(id: string) {
+  async deleteUser(id: number) {
     return this.request(`/api/users/${id}`, {
       method: "DELETE",
     });
   }
 
-  async updateUser(id: string, data: Partial<User>) {
+  async updateUser(id: number, data: Partial<User>) {
     return this.request<User>(`/api/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -133,15 +132,29 @@ class ApiClient {
     });
   }
 
-  async updateArticle(article_id: string, data: Partial<Article>) {
-    return this.request<Article>(`/api/articles/${article_id}`, {
+  async updateArticle(article_id: number, data: Partial<ArticleUpdate>) {
+    return this.request<ArticleUpdate>(`/api/articles/${article_id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
-  async deleteArticle(id: string) {
+  async deleteArticle(id: number) {
     return this.request(`/api/articles/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  //Locale API
+  async addLocale(data: Partial<ArticleTranslation>) {
+    return this.request<ArticleTranslation>("/api/locale", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteLocale(id: number) {
+    return this.request(`/api/delete/locale/${id}`, {
       method: "DELETE",
     });
   }
@@ -174,14 +187,14 @@ class ApiClient {
     });
   }
 
-  async updateCategory(id: string, data: Partial<Category>) {
+  async updateCategory(id: number, data: Partial<Category>) {
     return this.request<Category>(`/api/categories/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async deleteCategory(id: string) {
+  async deleteCategory(id: number) {
     return this.request(`/api/categories/${id}`, {
       method: "DELETE",
     });
@@ -189,31 +202,20 @@ class ApiClient {
 
   // Media API
   async getMedia() {
-    return this.request<MediaFile[]>("/api/uploads");
+    return this.request<{ files: string[] }>("/api/uploads");
   }
 
-  async delMedia(file: string) {
-    const filename = file.split("/uploads/")[1];
+  async delMedia(filename: string) {
     return this.request(`/api/upload/${filename}`, {
       method: "DELETE",
     });
   }
 
-  // In your ApiClient class
-  async uploadFile(formData: FormData): Promise<{ url: string }> {
-    const response = await fetch(`${this.baseURL}/api/upload`, {
+  async uploadFile(formData: FormData) {
+    return this.request(`/api/upload`, {
       method: "POST",
       body: formData,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
-    }
-
-    return await response.json();
   }
 }
 

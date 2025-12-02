@@ -16,7 +16,7 @@ export default function MainLayout({
       <Nav panel={panel} setPanel={setPanel} />
       <Panel panel={panel} />
       <main
-        className={`mt-[4.5rem] p-4 ${
+        className={`mt-14 p-4 flex items-center justify-center ${
           panel ? "ml-52" : ""
         } transition-all duration-300`}
       >
