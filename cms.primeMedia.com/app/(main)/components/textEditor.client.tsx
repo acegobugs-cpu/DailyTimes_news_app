@@ -69,6 +69,22 @@ interface MantineTiptapEditorProps {
   initialValue?: any;
 }
 
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    video: {
+      insertVideo: (attributes: CustomVideoAttributes) => ReturnType;
+    };
+  }
+}
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    embedVideo: {
+      insertEmbedVideo: (attributes: EmbedVideoAttributes) => ReturnType;
+    };
+  }
+}
+
 // Custom Image Extension (as block-level node)
 const CustomImageExtension = Node.create({
   name: "image",
@@ -206,12 +222,14 @@ const EmbedVideoExtension = Node.create({
 // Debounce function
 function debounce<T extends (...args: any[]) => void>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
+  let timeout: NodeJS.Timeout | number;
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
+    timeout = setTimeout(() => {
+      func(...args);
+    }, wait);
   };
 }
 
@@ -320,7 +338,7 @@ function MantineTiptapEditor({
         .setImage({
           src: mediaData.url,
           source: mediaData.source,
-        } as CustomImageAttributes)
+        } as any)
         .run();
     } else if (mediaData.mediaType === "video") {
       editor
@@ -368,7 +386,7 @@ function MantineTiptapEditor({
   });
 
   return (
-    <MantineProvider withGlobalStyles withNormalizeCSS>
+    <MantineProvider>
       <div className="w-full max-w-6xl mx-auto p-4 font-sans">
         <RichTextEditor editor={editor} className="rounded-lg shadow-md">
           <RichTextEditor.Toolbar
@@ -512,14 +530,15 @@ function MantineTiptapEditor({
             <RichTextEditor.ControlsGroup>
               <MediaBlock
                 data={mediaData}
-                onChange={(updated) => {
-                  setMediaData(updated);
-                  if (updated.url) {
-                    // Update mediaData and trigger insertion
-                    setMediaData(updated);
-                    setTimeout(handleMediaInsert, 100);
-                  }
-                }}
+                // onChange={(updated) => {
+                //   setMediaData(updated);
+                //   if (updated.url) {
+                //     // Update mediaData and trigger insertion
+                //     setMediaData(updated);
+                //     setTimeout(handleMediaInsert, 100);
+                //   }
+                // }}
+                onChange={() => {}}
               />
               <RichTextEditor.Control onClick={handleMediaInsert}>
                 {mediaData.mediaType === "image" ? (

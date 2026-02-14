@@ -25,7 +25,7 @@ export default function MediaBlock({ data, onChange }: MediaBlockProps) {
     try {
       setUploading(true);
       // Using our apiClient for upload
-      const result = await apiClient.uploadFile(formData);
+      const result: any = await apiClient.uploadFile(formData);
       onChange({ ...data, url: result.url, source: "local" });
       setShowModal(false);
     } catch (err) {
@@ -130,7 +130,7 @@ function SelectMedia({
     const fetchUploadedFiles = async () => {
       try {
         const mediaFiles = await apiClient.getMedia();
-        setUploadedFiles(mediaFiles.map((file) => file.url));
+        setUploadedFiles(mediaFiles.files.map((file) => file));
       } catch (error) {
         console.error("Failed to fetch uploaded files:", error);
         setUploadedFiles([]);

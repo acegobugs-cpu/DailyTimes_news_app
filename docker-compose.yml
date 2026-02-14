@@ -1,0 +1,114 @@
+services:
+  #--- Nginx Reverse proxy ---
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/certs:/etc/nginx/certs
+    depends_on:
+      - public
+      - admin
+      - api
+      - minio
+    networks:
+      - internal
+
+  # --- MySQL Database ---
+  mysql:
+    image: mysql:8.1
+    container_name: mysql
+    restart: always
+    env_file:
+      - ./db/.env
+    # ports:
+    #   - "3306:3306" # optional for local access; can remove in prod
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - internal
+
+  # --- MinIO Object Storage ---
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    env_file:
+      - ./minio/.env
+    command: server /data --console-address ":9001"
+    # ports:
+    #   - "9000:9000" # API
+    #   - "9001:9001" # Web console
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal
+    restart: always
+
+  # --- FastAPI Backend ---
+  api:
+    build:
+      context: ./api.primeMedia.com
+      dockerfile: Dockerfile
+    container_name: api
+    env_file:
+      - ./api.primeMedia.com/.env
+    # ports:
+    #   - "8000:8000" # internal; can be proxied later
+    # depends_on:
+    #   mysql:
+    #     condition: service_healthy
+    #   minio:
+    #     condition: service_healthy
+    networks:
+      - internal
+    restart: always
+
+  # --- Public Next.js ---
+  public:
+    build:
+      context: ./primeMedia.com
+      dockerfile: Dockerfile
+    container_name: public
+    env_file:
+      - ./primeMedia.com/.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - internal
+    restart: always
+
+  # --- Admin Next.js ---
+  admin:
+    build:
+      context: ./cms.primeMedia.com
+      dockerfile: Dockerfile
+    container_name: admin
+    env_file:
+      - ./cms.primeMedia.com/.env
+    environment:
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+    networks:
+      - internal
+    restart: always
+
+# --- Volumes ---
+volumes:
+  mysql_data:
+    name: news_mysql_data
+  minio_data:
+    name: news_minio_data
+
+# --- Networks ---
+networks:
+  internal:
+    driver: bridge
