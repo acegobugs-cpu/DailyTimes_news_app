@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, File, UploadFile, APIRouter, status
+from fastapi import FastAPI, Depends, HTTPException, Query, File, UploadFile, APIRouter, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, text
@@ -16,8 +16,21 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from routes import auth 
 from routes.dependencies import get_current_user
+from utils.rate_limit import RateLimitMiddleware
 
 app = FastAPI()
+# Rate limiting: global default and path-specific stricter limits
+app.add_middleware(
+    RateLimitMiddleware,
+    default_limit="100/minute",
+    path_limits=[
+        (r"^/api/login$", "10/minute"),
+        (r"^/api/register/.*$", "5/minute"),
+        (r"^/api/authorize-emails$", "15/minute"),
+        (r"^/api/upload(?:/.*)?$", "20/minute"),
+        (r"^/api/search$", "60/minute"),
+    ],
+)
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -368,7 +381,7 @@ async def create_article(article: ArticleCreate, db: Session = Depends(get_db), 
 
     return db_article
 
-@app.post("/api/article-locales", response_model=ArticleLocaleRes)
+@app.post("/api/locale", response_model=ArticleLocaleRes)
 def add_article_locale(locale_data: ArticleLocaleCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # 1. Check if article exists
     article = db.query(Article).filter(Article.id == locale_data.article_id).first()
@@ -414,12 +427,14 @@ def update_article(article_id: int, update_data: ArticleUpdate, db: Session = De
     if update_data.translations:
         for locale_code, locale_data in update_data.translations.items():
             translation = next(
-                (t for t in article.translations if t.locale == locale_code),
+                (t for t in article.translations if t.id == locale_data.id),
                 None
             )
 
             if translation:
                 # Update existing translation
+                if locale_data.locale is not None:
+                    translation.locale = locale_data.locale
                 if locale_data.title is not None:
                     translation.title = locale_data.title
                 if locale_data.slug is not None:
@@ -448,7 +463,7 @@ def update_article(article_id: int, update_data: ArticleUpdate, db: Session = De
     return {"message": "Article updated successfully", "article_id": article.id}
 
 @app.post("/api/categories", response_model=CategoryRes)
-async def create_category(category: CategoryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create_category(category: CategoryCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_category = Category(**category.dict())
     db.add(db_category)
     db.commit()

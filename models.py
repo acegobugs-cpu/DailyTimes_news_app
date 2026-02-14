@@ -1,5 +1,5 @@
 # from xmlrpc.client import Boolean
-from sqlalchemy import Boolean, Integer, String, JSON, Table, Column, ForeignKey, DateTime, Text, UniqueConstraint
+from sqlalchemy import Boolean, Integer, BigInteger, String, JSON, Table, Column, ForeignKey, DateTime, Text, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,6 +15,28 @@ article_category = Table(
     Column('article_id', Integer, ForeignKey('articles.id'), primary_key=True),
     Column('category_id', Integer, ForeignKey('categories.id'), primary_key=True)
 )
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    token_hash = Column(String(64), nullable=False, unique=True)  # sha256 hex
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    revoked = Column(Boolean, nullable=False, default=False)
+    replaced_by_id = Column(BigInteger, ForeignKey("refresh_tokens.id"), nullable=True)
+
+    ip_address = Column(String(45), nullable=True)   # supports IPv6
+    user_agent = Column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uniq_token_hash"),
+        Index("idx_refresh_tokens_user_id", "user_id"),
+        Index("idx_refresh_tokens_expires_at", "expires_at"),
+    )
 
 class User(Base):
     __tablename__ = "users"

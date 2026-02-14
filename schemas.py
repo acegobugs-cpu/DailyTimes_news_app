@@ -3,6 +3,8 @@ from pydantic import BaseModel, EmailStr, constr, ConfigDict, Json
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 
+class TokenVerify(BaseModel):
+    token: str
 
 class UserBase(BaseModel):
     fname:str
@@ -70,8 +72,12 @@ class CategoryUpdate(BaseModel):
     class Config:
         from_attributes = True
 
-class CategoryCreate(CategoryBase):
-    pass
+class CategoryCreate(BaseModel):
+    name: str
+    slug: str
+    
+    class Config:
+        from_attributes = True
 
 class CategoryRes(CategoryBase):
     articles: Optional[List["ArticleBase"]] = []
@@ -103,6 +109,8 @@ class ArticleLocaleRes(ArticleLocaleBase):
         from_attributes = True
 
 class ArticleLocaleUpdate(BaseModel):
+    id: Optional[int]
+    locale: Optional[str]
     title: Optional[str]
     slug: Optional[str]
     description: Optional[str]

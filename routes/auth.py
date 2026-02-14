@@ -1,17 +1,20 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response, Request, Cookie
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from uuid import uuid4
 from datetime import datetime
 from typing import List
 
 from database import get_db
-from models import User, AuthorizedEmail
-from schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes, UserUpdate
-from utils.auth import hash_password, verify_password, create_access_token
+from models import User, AuthorizedEmail, RefreshToken
+import hashlib
+from schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes, UserUpdate, TokenVerify
+from utils.auth import hash_password, verify_password, create_access_token, create_refresh_token, decode_access_token
 from utils.mail import send_invite_email
-from routes.dependencies import superadmin_required
+from routes.dependencies import superadmin_required, store_refresh_token
 
 router = APIRouter()
+
 
 @router.post("/api/register/{slug}", response_model=UserRes)
 def register_user(slug: str, data: UserCreate, db: Session = Depends(get_db)):
@@ -44,7 +47,15 @@ def register_user(slug: str, data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/api/login")
-def login(data: UserLoginInput, db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    response: Response,  # Add this to set cookies
+    data: UserLoginInput, 
+    db: Session = Depends(get_db)
+):
+    request_ip = request.client.host #if response.client else "unknown"
+    request_user_agent = request.headers.get("user-agent", "unknown") if request.headers else "unknown"
+ 
     user = db.query(User).filter(
         (User.email == data.email_or_username) | (User.uname == data.email_or_username)
     ).first()
@@ -52,17 +63,141 @@ def login(data: UserLoginInput, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.h_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token({"sub": str(user.id)})
+    access_token = create_access_token({"sub": str(user.id)})
+    raw_refresh, hashed_refresh, expires_at = create_refresh_token()
+
+    store_refresh_token(db, user.id, hashed_refresh, expires_at=expires_at, ip_address=request_ip, user_agent=request_user_agent)
+    
+    # # Set HttpOnly cookie
+    # response.set_cookie(
+    #     key="token",
+    #     value=token,
+    #     httponly=True,
+    #     max_age=60 * 60 * 24 * 7,  # 7 days
+    #     expires=60 * 60 * 24 * 7,
+    #     samesite="lax",
+    #     secure=False  # Set to True in production with HTTPS
+    # )
+    
     return {
-        "access_token": token,
-        "token_type": "bearer",
+        "access_token": access_token,  # Still return for debugging, can remove later
+        "refresh_token": raw_refresh,
         "user": {
             "id": user.id,
             "uid": user.uid,
             "username": user.uname,
+            "email": user.email,
             "is_superuser": user.is_superuser
         }
     }
+
+
+@router.get("/api/me")
+def get_current_user(access_token: str = Cookie(None), db: Session = Depends(get_db)):
+
+    if not access_token:
+        return {"user": None}
+
+    try:
+        payload = decode_access_token(access_token)
+        user_id = payload.get("sub")
+        if not user_id:
+            return {"user": None}
+
+        # Fetch fresh user from DB
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            return {"user": None}
+
+        return {
+            "user": {
+                "id": user.id,
+                "uid": user.uid,
+                "username": user.uname,
+                "email": user.email,
+                "is_superuser": user.is_superuser,
+            }
+        }
+
+    except JWTError:
+        return {"user": None}
+
+@router.post("/api/refresh")
+def refresh_token(request: Request, db: Session = Depends(get_db)):
+    body = request.json()
+    old_token_plain = body.get("refresh_token")
+    if not old_token_plain:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    old_token_hash = hashlib.sha256(old_token_plain.encode()).hexdigest()
+    old_token = db.query(RefreshToken).filter_by(token_hash=old_token_hash).first()
+
+    if not old_token or old_token.revoked or old_token.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    # Generate new refresh token
+    new_token_plain, new_token_hash, new_expires_at = generate_refresh_token()
+
+    # Store new token in DB
+    new_token = RefreshToken(
+        user_id=old_token.user_id,
+        token_hash=new_token_hash,
+        expires_at=new_expires_at,
+        revoked=False,
+        replaced_by_id=None
+    )
+    db.add(new_token)
+
+    # Revoke old token and link to new
+    old_token.revoked = True
+    old_token.replaced_by_id = new_token.id
+
+    db.commit()
+    db.refresh(new_token)
+
+    user = db.query(User).filter_by(id=old_token.user_id).first()
+
+
+    new_access_token = create_access_token({"sub": str(user.id)})
+
+    return {
+        "access_token": new_access_token,  # we’ll issue this next
+        "refresh_token": new_token_plain,
+        "user": {
+            "id": user.id, 
+            "uid": user.uid,
+            "username": user.uname,
+            "email": user.email,  
+            "is_superuser": user.is_superuser}
+    }
+
+@router.post("/api/verify")
+def verify_token(payload: TokenVerify, db=Depends(get_db)):
+
+    token = payload.token
+    try:
+        decoded = decode_access_token(token)
+        user_id = decoded.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # Make sure user still exists
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        return {"valid": True}
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+
+@router.post("/api/logout")
+def logout(response: Response):
+    # Clear the token cookie
+    response.delete_cookie(key="access_token")
+    return {"message": "Logged out successfully"}
+
+    
 @router.put("/api/users/{id}", response_model=UserRes)
 def update_user(id: int, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     user = db.query(User).filter(User.id == id).first()
