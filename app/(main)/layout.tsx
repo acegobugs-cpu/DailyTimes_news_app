@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Panel from "./components/panel";
 import Nav from "./components/nav";
 
@@ -10,6 +10,8 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [panel, setPanel] = useState(true);
+
+  // refreshUser();
 
   return (
     <>

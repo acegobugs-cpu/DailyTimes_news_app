@@ -27,7 +27,7 @@ export default function AuthorizeEmail() {
 
   useEffect(() => {
     if (!user?.is_superuser) {
-      router.push("/(main)");
+      router.push("/login");
     }
   }, [user, router]);
 

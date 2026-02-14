@@ -6,88 +6,112 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
+import { useRouter } from "next/navigation";
 import { User } from "../types/types";
+import { fetchWithAuth } from "../lib/fetchWithAuth";
 
+// -----------------
+// Auth Context Types
+// -----------------
 interface AuthContextType {
-  user: User | null;
+  user: Partial<User> | null;
   setUser: (user: User | null) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  refreshUser: () => Promise<void>;
+  authFetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 }
 
+// -----------------
+// Create Context
+// -----------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+// -----------------
+// Auth Provider
+// -----------------
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [user, setUser] = useState<Partial<User> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check auth status on mount
-  // useEffect(() => {
-  //   checkAuthStatus();
-  // }, []);
-
-  // const checkAuthStatus = async () => {
-  //   try {
-  //     const response = await fetch("/api/auth/me");
-  //     if (response.ok) {
-  //       const userData = await response.json();
-  //       setUser(userData);
-  //     }
-  //   } catch (error) {
-  //     console.error("Auth check failed:", error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-  const login = async (email_or_username: string, password: string) => {
+  // Fetch user from /api/auth/me
+  const refreshUser = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email_or_username, password }),
+      const res = await fetch("/api/auth/me", {
+        cache: "no-store",
+        credentials: "include",
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Login failed");
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user ?? null);
+      } else {
+        setUser(null);
       }
-
-      const { user } = await response.json();
-      setUser(user);
-      console.log("User logged in:", user);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Failed to refresh user:", err);
       setUser(null);
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
+  // Run on mount
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  // Logout function
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      router.replace("/login");
+      setUser(null);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  }, [router]);
+
+  // Wrap fetchWithAuth so it automatically updates AuthContext
+  const authFetch = useCallback(
+    async (input: RequestInfo, init?: RequestInit) => {
+      return fetchWithAuth(input, {
+        ...init,
+        updateUser: refreshUser, // automatically sync user after refresh
+      });
+    },
+    [refreshUser]
+  );
+
+  // Context value
   const value: AuthContextType = {
     user,
     setUser,
     logout,
     isAuthenticated: !!user,
     isLoading,
+    refreshUser,
+    authFetch,
   };
+
+  console.log("AUTH CONTEXT VALUE:", value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// -----------------
+// Custom Hook
+// -----------------
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;

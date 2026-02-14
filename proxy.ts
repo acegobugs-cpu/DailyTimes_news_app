@@ -5,7 +5,7 @@ import { jwtVerify } from "jose";
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export default async function proxy(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
+  const token = request.cookies.get("access_token")?.value;
   const pathname = request.nextUrl.pathname;
 
   const protectedRoutes = [
@@ -27,7 +27,7 @@ export default async function proxy(request: NextRequest) {
     } catch (err) {
       // Token invalid - clear it and treat as no token
       const response = NextResponse.redirect(new URL("/login", request.url));
-      response.cookies.delete("token");
+      response.cookies.delete("access_token");
       return response;
     }
   }

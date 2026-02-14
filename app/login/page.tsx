@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../components/AuthContext";
+import { apiClient } from "../lib/api";
 
 export default function Login() {
   const [form, setForm] = useState({ email_or_username: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser, isAuthenticated } = useAuth();
+  const { setUser, isAuthenticated, refreshUser } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {

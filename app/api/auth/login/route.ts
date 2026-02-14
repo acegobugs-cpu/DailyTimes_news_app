@@ -5,8 +5,6 @@ export async function POST(request: NextRequest) {
   try {
     const { email_or_username, password } = await request.json();
 
-    console.log("Login attempt:", { email_or_username, password });
-
     if (!email_or_username || !password) {
       return NextResponse.json(
         { error: "Username/email and password are required" },
@@ -42,17 +40,26 @@ export async function POST(request: NextRequest) {
     const authData = await authResponse.json();
     console.log("Auth API success:", {
       hasToken: !!authData.access_token,
+      hasRotate: !!authData.refresh_token,
       hasUser: !!authData.user,
     });
 
     // Set HttpOnly cookie
     const cookieStore = await cookies();
-    cookieStore.set("token", authData.access_token, {
+    cookieStore.set("access_token", authData.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      sameSite: "strict",
+      maxAge: 60 * 30, // 30 min
       path: "/",
+    });
+
+    cookieStore.set("refresh_token", authData.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: "/api/auth",
     });
 
     return NextResponse.json({ user: authData.user });

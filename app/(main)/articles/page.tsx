@@ -765,7 +765,6 @@ function EditArticleModal({
         updated_at: new Date().toISOString(),
         translations: translationsDict,
       };
-      console.log("Submitting payload:", payload);
       await apiClient.updateArticle(article.id, payload);
       setSuccess(true);
       await refreshArticles();

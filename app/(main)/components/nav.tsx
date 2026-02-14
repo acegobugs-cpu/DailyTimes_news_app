@@ -123,10 +123,10 @@ export default function Nav({ panel, setPanel }: HeaderProps) {
             </div>
             <div className="hidden md:flex flex-col items-start">
               <p className="text-blue-500 text-sm font-bold leading-none">
-                {user?.username}
+                {user ? user?.username : "NoNe"}
               </p>
               <p className="text-[var(--Gray-fr)] text-xs leading-none">
-                {user?.email}
+                {user ? user?.email : "NONE"}
               </p>
             </div>
             <ChevronDown

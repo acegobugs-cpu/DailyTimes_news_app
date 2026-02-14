@@ -12,10 +12,8 @@ export default function Panel({ panel }: PanelProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  console.log("stored", user);
   const handleLogout = () => {
     logout();
-    router.push("/login");
   };
 
   // Helper function to check active link

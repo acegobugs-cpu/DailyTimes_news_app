@@ -62,11 +62,20 @@ class ApiClient {
   }
 
   // Auth API
-  async loginUser(data: LoginData) {
-    return this.request<{ token: string; user: User }>("/api/login", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+  async loginUser(
+    email_or_username: string,
+    password: string
+  ): Promise<{ email_or_username: string; password: string }> {
+    return this.request<{ email_or_username: string; password: string }>(
+      "/api/login",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email_or_username,
+          password,
+        }),
+      }
+    );
   }
 
   async registerUser(slug: string, data: RegisterData): Promise<AuthResponse> {

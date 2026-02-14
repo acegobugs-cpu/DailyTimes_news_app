@@ -1,35 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const cookies = request.headers.get("cookie") || "";
 
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    // Verify token and get user data from your API
-    const userResponse = await fetch(
-      `${process.env.API_BASE_URL}/api/user/me`,
+    const backendResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/me`,
       {
+        method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Cookie: cookies,
         },
+        cache: "no-store", // always fresh
       }
     );
 
-    if (!userResponse.ok) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    if (!backendResponse.ok) {
+      return NextResponse.json({ user: null });
     }
 
-    const user = await userResponse.json();
-    return NextResponse.json(user);
+    const data = await backendResponse.json();
+
+    return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Authentication check failed" },
-      { status: 500 }
-    );
+    console.error("GET /api/me error:", error);
+    return NextResponse.json({ user: null });
   }
 }
