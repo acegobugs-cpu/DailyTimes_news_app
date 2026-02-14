@@ -1,3 +1,19 @@
 
 .env
 **/.env
+
+*.key
+**/*.key
+
+*.crt
+**/*.crt
+
+*.pem
+**/*.pem
+
+/certs
+**/certs
+
+nginx/crt/*.key
+nginx/crt/*.crt
+nginx/certs/
