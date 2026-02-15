@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user ?? null);
+        console.log("api/me", user);
       } else {
         setUser(null);
       }
@@ -87,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateUser: refreshUser, // automatically sync user after refresh
       });
     },
-    [refreshUser]
+    [refreshUser],
   );
 
   // Context value

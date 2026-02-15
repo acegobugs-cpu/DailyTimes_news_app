@@ -78,7 +78,7 @@ export default function Articles() {
     try {
       await apiClient.deleteArticle(selectedArticle.id);
       setArticles(
-        articles.filter((article) => article.id !== selectedArticle.id)
+        articles.filter((article) => article.id !== selectedArticle.id),
       );
       setSelectedArticle(null);
       setError(null);
@@ -310,7 +310,7 @@ function ArticleForm({ onSuccess }: { onSuccess: () => void }) {
           description: formData.description,
           content: formData.content,
           editor_id: user?.id || 0,
-          published_at: formData.is_published ? new Date().toISOString() : "",
+          published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
       ],
@@ -402,7 +402,7 @@ function ArticleForm({ onSuccess }: { onSuccess: () => void }) {
               isMulti
               options={categoryOptions}
               value={categoryOptions.filter((opt) =>
-                formData.category_ids.includes(opt.value)
+                formData.category_ids.includes(opt.value),
               )}
               onChange={(selected) =>
                 setFormData({
@@ -740,7 +740,7 @@ function EditArticleModal({
     (json: any) => {
       updateTranslation(selectedLocale, { content: json });
     },
-    [selectedLocale]
+    [selectedLocale],
   );
 
   const handleSubmit = async () => {
@@ -920,7 +920,7 @@ function EditArticleModal({
                   isMulti
                   options={categoryOptions}
                   value={categoryOptions.filter((opt) =>
-                    formData.category_ids.includes(opt.value)
+                    formData.category_ids.includes(opt.value),
                   )}
                   onChange={(selected) =>
                     setFormData({

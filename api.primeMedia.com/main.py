@@ -37,7 +37,7 @@ app.add_middleware(
     allow_origins=["https://the-daily-times-com.vercel.app",
         "https://strong-zabaione-697d0a.netlify.app",
         "http://localhost:3000",
-        "http://localhost:5173",
+        "http://localhost:3001",
         ],  # Change to your frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],

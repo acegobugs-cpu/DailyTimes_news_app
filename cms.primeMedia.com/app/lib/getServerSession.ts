@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 export async function getServerSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
+  console.log(token);
 
   if (!token) return null;
 
@@ -15,7 +16,7 @@ export async function getServerSession() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
         // Server → backend, no cookies required
-      }
+      },
     );
 
     if (!res.ok) return null;

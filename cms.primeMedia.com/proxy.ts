@@ -7,6 +7,7 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 export default async function proxy(request: NextRequest) {
   const token = request.cookies.get("access_token")?.value;
   const pathname = request.nextUrl.pathname;
+  console.log(token);
 
   const protectedRoutes = [
     "/dashboard",

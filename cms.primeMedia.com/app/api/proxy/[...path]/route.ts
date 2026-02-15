@@ -6,7 +6,7 @@ async function forwardToBackend(
   request: NextRequest,
   method: string = "GET",
   body?: any,
-  extraHeaders: Record<string, string> = {}
+  extraHeaders: Record<string, string> = {},
 ) {
   // Forward all cookies from the original request
   const cookieHeader = request.headers.get("cookie") || "";
@@ -54,7 +54,7 @@ async function forwardToBackend(
 
   const backendResponse = await fetch(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/${fullPath}`,
-    config
+    config,
   );
 
   const contentType = backendResponse.headers.get("content-type") || "";
@@ -73,7 +73,7 @@ async function forwardToBackend(
 // GET - For fetching data
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const fullPath = path.join("/");
@@ -87,7 +87,7 @@ export async function GET(
 // POST - For creating data
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const fullPath = path.join("/");
@@ -98,6 +98,7 @@ export async function POST(
     contentType,
     url: request.url,
   });
+  console.log(request);
 
   let body: any = undefined;
   const extraHeaders: Record<string, string> = {};
@@ -125,7 +126,7 @@ export async function POST(
 // PUT - For updating/replacing data
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const fullPath = path.join("/");
@@ -154,7 +155,7 @@ export async function PUT(
 // PATCH - For partial updates
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const fullPath = path.join("/");
@@ -165,7 +166,7 @@ export async function PATCH(
 // DELETE - For deleting data
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const fullPath = path.join("/");

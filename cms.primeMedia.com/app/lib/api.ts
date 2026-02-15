@@ -23,7 +23,7 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     // const url = `${this.baseURL}${endpoint}`;
     const url = `/api/proxy${endpoint}`;
@@ -64,7 +64,7 @@ class ApiClient {
   // Auth API
   async loginUser(
     email_or_username: string,
-    password: string
+    password: string,
   ): Promise<{ email_or_username: string; password: string }> {
     return this.request<{ email_or_username: string; password: string }>(
       "/api/login",
@@ -74,7 +74,7 @@ class ApiClient {
           email_or_username,
           password,
         }),
-      }
+      },
     );
   }
 

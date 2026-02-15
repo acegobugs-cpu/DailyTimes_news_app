@@ -37,8 +37,8 @@ services:
     restart: always
     env_file:
       - ./db/.env
-    # ports:
-    #   - "3306:3306" # optional for local access; can remove in prod
+    ports:
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
