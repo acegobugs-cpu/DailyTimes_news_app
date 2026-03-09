@@ -57,6 +57,10 @@ async function forwardToBackend(
     config,
   );
 
+  if (backendResponse.status === 204) {
+    return new NextResponse(null, { status: 204 });
+  }
+
   const contentType = backendResponse.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     const data = await backendResponse.json();

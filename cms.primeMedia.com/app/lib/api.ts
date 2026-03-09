@@ -48,10 +48,11 @@ class ApiClient {
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        // if (response.status === 401) {
-        //   window.location.href = "/login";
-        // }
         throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (response.status === 204) {
+        return {} as T;
       }
 
       return await response.json();
