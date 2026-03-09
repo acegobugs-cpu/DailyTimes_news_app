@@ -6,8 +6,8 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-main: #3e0064;
+@theme {
+  --color-main: #311b65;
   --color-main-dark: #380654;
 
   --color-custom: #ededed;

@@ -29,14 +29,14 @@ export default function Panel({ panel }: PanelProps) {
           : "opacity-0 -translate-x-full pointer-events-none"
       }`}
     >
-      <div className="flex flex-col h-full p-5">
+      <div className="flex flex-col h-full p-5 pr-0">
         <div className="flex-1 space-y-2">
           <Link
             href="/dashboard"
             className={`flex items-center px-4 py-3 rounded-lg text-gray-700 font-medium transition-all ${
               isActive("/dashboard")
-                ? "bg-[#311B65] text-white"
-                : "hover:bg-[#311B65]/10 hover:text-[#311B65]"
+                ? "bg-main text-white"
+                : "hover:bg-main/10 hover:text-main"
             }`}
           >
             Home
@@ -46,8 +46,8 @@ export default function Panel({ panel }: PanelProps) {
             href="/articles"
             className={`flex items-center px-4 py-3 rounded-lg text-gray-700 font-medium transition-all ${
               isActive("/articles")
-                ? "bg-[#311B65] text-white"
-                : "hover:bg-[#311B65]/10 hover:text-[#311B65]"
+                ? "bg-main text-white"
+                : "hover:bg-main/10 hover:text-main"
             }`}
           >
             Manage Articles
@@ -57,8 +57,8 @@ export default function Panel({ panel }: PanelProps) {
             href="/categories"
             className={`flex items-center px-4 py-3 rounded-lg text-gray-700 font-medium transition-all ${
               isActive("/categories")
-                ? "bg-[#311B65] text-white"
-                : "hover:bg-[#311B65]/10 hover:text-[#311B65]"
+                ? "bg-main text-white"
+                : "hover:bg-main/10 hover:text-main"
             }`}
           >
             Manage Categories
@@ -68,8 +68,8 @@ export default function Panel({ panel }: PanelProps) {
             href="/files"
             className={`flex items-center px-4 py-3 rounded-lg text-gray-700 font-medium transition-all ${
               isActive("/files")
-                ? "bg-[#311B65] text-white"
-                : "hover:bg-[#311B65]/10 hover:text-[#311B65]"
+                ? "bg-main text-white"
+                : "hover:bg-main/10 hover:text-main"
             }`}
           >
             Manage Files
@@ -80,8 +80,8 @@ export default function Panel({ panel }: PanelProps) {
               href="/authorize-email"
               className={`flex items-center px-4 py-3 rounded-lg text-gray-700 font-medium transition-all ${
                 isActive("/authorize-email")
-                  ? "bg-[#311B65] text-white"
-                  : "hover:bg-[#311B65]/10 hover:text-[#311B65]"
+                  ? "bg-main text-white"
+                  : "hover:bg-main/10 hover:text-main"
               }`}
             >
               Manage Users
