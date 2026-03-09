@@ -16,7 +16,7 @@ import {
   ArticleUpdate,
 } from "@/app/types/types";
 
-const TextEditor = dynamic(() => import("../components/textEditor.client"), {
+const TextEditor = dynamic(() => import("../components/textEditor"), {
   ssr: false,
   loading: () => <div>Loading editor...</div>,
 });

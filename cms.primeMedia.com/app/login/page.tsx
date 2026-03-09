@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../components/AuthContext";
+import { Eye, EyeOff } from "lucide-react";
 import { apiClient } from "../lib/api";
 
 export default function Login() {
   const [form, setForm] = useState({ email_or_username: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { setUser, isAuthenticated, refreshUser } = useAuth();
+  const router = useRouter();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -61,13 +63,21 @@ export default function Login() {
   };
 
   return (
-    <div className="w-full flex items-center justify-center min-h-screen">
-      <div className="w-full max-w-sm p-6 rounded-lg shadow-md bg-white dark:bg-gray-800">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
-          Login
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#311B65] via-[#311B65]/95 to-[#1e1142]"></div>
+        <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=2000')] bg-cover bg-center mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-black/30"></div>
+      </div>
+
+      {/* Card */}
+      <div className="relative z-10 w-full max-w-md p-10 rounded-2xl shadow-2xl bg-white/95 backdrop-blur-sm border border-white/10">
+        <h1 className="text-4xl font-bold text-center mb-8 text-[#311B65] tracking-tight">
+          Prime Media
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <input
               type="text"
@@ -76,34 +86,49 @@ export default function Login() {
               value={form.email_or_username}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:border-[#311B65] focus:ring-2 focus:ring-[#311B65]/30 bg-white/80 transition-all duration-200 text-gray-900 placeholder-gray-500 text-lg"
               disabled={isLoading}
             />
           </div>
 
-          <div>
+          <div className="relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               placeholder="Password"
               value={form.password}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:border-[#311B65] focus:ring-2 focus:ring-[#311B65]/30 bg-white/80 transition-all duration-200 text-gray-900 placeholder-gray-500 text-lg"
               disabled={isLoading}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#311B65] transition-colors"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
-          {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+          {error && (
+            <p className="text-red-600/90 text-sm text-center font-medium bg-red-50/80 py-2 rounded-lg">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-[#311B65] text-white py-4 px-6 rounded-xl text-lg font-semibold hover:bg-[#3c2478] focus:ring-4 focus:ring-[#311B65]/40 disabled:opacity-60 transition-all duration-200 shadow-md hover:shadow-lg"
           >
-            {isLoading ? "Signing In..." : "Sign In"}
+            {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        {/* Subtle accent line */}
+        <div className="mt-8 h-1 bg-gradient-to-r from-transparent via-red-400/40 to-transparent rounded-full max-w-[180px] mx-auto"></div>
       </div>
     </div>
   );
