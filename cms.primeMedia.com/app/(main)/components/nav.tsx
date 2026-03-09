@@ -49,92 +49,71 @@ export default function Nav({ panel, setPanel }: HeaderProps) {
   }, []);
 
   return (
-    <header className="fixed top-0 inset-x-0 w-full h-14 backdrop-blur-lg bg-custom-nav text-black flex items-center justify-between z-50 pl-6">
-      {/* Left side: Panel toggle + Search */}
-      <div className="flex items-center justify-between w-lg">
-        <div className="flex items-center justify-start">
-          {/* Panel Toggle */}
-          <button
-            type="button"
-            className={`text-blue-500 p-1 rounded transition-all duration-200 ease-in-out transform hover:scale-110 ${
-              panel ? "rotate-180" : ""
-            }`}
-            onClick={() => setPanel((prev) => !prev)}
-            aria-label="Expand navigation panel"
-          >
-            <Logs size={20} />
-          </button>
-        </div>
+    <header className="fixed top-0 inset-x-0 w-full h-14 backdrop-blur-md bg-white border-b border-red-200 flex items-center justify-between z-50 pl-6 pr-6 text-[#311B65]">
+      {/* Left */}
+      <div className="flex items-center gap-6">
+        <button
+          type="button"
+          className={`p-1.5 rounded hover:bg-gray-100 transition-all ${panel ? "rotate-180" : ""}`}
+          onClick={() => setPanel((prev) => !prev)}
+        >
+          <Logs size={20} className="" />
+        </button>
+        <h1 className="text-2xl font-semibold ">Prime Media</h1>
 
-        <h1 className="text-2xl text-blue-500">The daily times</h1>
-
-        {/* Search */}
-        <div className="hidden sm:flex items-center px-2 border border-gray-600 rounded-md hover:border-blue-500 focus:placeholder-blue-500 transition-all">
-          <Search size={16} />
+        <div className="hidden sm:flex items-center px-3 py-1.5 bg-gray-50 border border-red-200 rounded-md hover:border-red-300 transition-all">
+          <Search size={16} className="" />
           <input
             type="search"
-            placeholder="Search..."
-            className="bg-transparent outline-none px-2 py-1 placeholder-black focus:placeholder-blue-500 transition-colors w-36 md:w-52"
-            aria-label="Search"
+            placeholder="Search news..."
+            className="bg-transparent outline-none px-2 text-sm focus:placeholder-gray-400 w-40 md:w-64"
           />
         </div>
       </div>
 
-      {/* Right side: actions + user */}
-      <div className="flex items-center space-x-2 sm:space-x-4">
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2 text-blue-500">
+      {/* Right */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
           <button
-            className="hidden md:block p-1 rounded hover:bg-blue-500 hover:text-white transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 rounded hover:bg-gray-100 transition-all"
             aria-label="Menu"
           >
             <Menu size={20} />
           </button>
           <button
-            className="p-1 rounded hover:bg-blue-500 hover:text-white transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 rounded hover:bg-gray-100 transition-all"
             aria-label="Notifications"
           >
             <BellDot size={20} />
           </button>
           <Link
             href="/settings"
-            className="hidden md:block p-1 rounded hover:bg-blue-500 hover:text-white transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="hidden md:block p-2 rounded hover:bg-gray-100 transition-all"
             aria-label="Settings"
           >
             <Settings size={20} />
           </Link>
         </div>
 
-        {/* User Section */}
-        <div
-          ref={userMenuRef}
-          className="relative flex items-center space-x-2 sm:space-x-3 border-l border-[var(--Gray-fr)] pl-3 focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0"
-        >
+        <div className="relative flex items-center gap-3 border-l border-red-200 pl-4">
           <button
             type="button"
-            className="flex items-center space-x-2 sm:space-x-3 rounded pr-1"
-            aria-haspopup="menu"
-            aria-expanded={isUserMenuOpen}
-            aria-label="Open user menu"
+            className="flex items-center gap-3"
             onClick={() => setIsUserMenuOpen((v) => !v)}
           >
-            <div className="h-9 w-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold transition-transform duration-200 ease-in-out hover:scale-105">
-              <span>A</span>
+            <div className="h-8 w-8 rounded-full bg-[#311B65] flex items-center justify-center text-white text-sm font-medium">
+              A
             </div>
             <div className="hidden md:flex flex-col items-start">
-              <p className="text-blue-500 text-sm font-bold leading-none">
-                {user ? user?.username : "NoNe"}
+              <p className="text-sm font-medium text-gray-900">
+                {user ? user.username : "Guest"}
               </p>
-              <p className="text-[var(--Gray-fr)] text-xs leading-none">
-                {user ? user?.email : "NONE"}
-              </p>
+              <p className="text-xs">{user ? user.email : ""}</p>
             </div>
             <ChevronDown
-              className={`hidden md:block transition-transform duration-200 ${
-                isUserMenuOpen ? "rotate-180" : ""
-              }`}
-              size={18}
-              stroke="var(--Gray-fr)"
+              stroke="fill"
+              size={16}
+              className={`transition-transform ${isUserMenuOpen ? "rotate-180" : ""}`}
             />
           </button>
           <Dropdown
