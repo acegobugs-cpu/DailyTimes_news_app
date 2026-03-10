@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from routes import auth 
+import minIO
 from routes.dependencies import get_current_user
 from utils.rate_limit import RateLimitMiddleware
 
@@ -44,85 +45,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth.router, tags=["Auth"])
+app.include_router(minIO.router, tags = [""])
 
 # frontend_path = os.path.join(os.path.dirname(__file__), "../frontend/dist")
 # app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-@app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
-    content = await file.read()
-    file_hash = hashlib.md5(content).hexdigest()
-    original_name = file.filename
-    ext = original_name.split(".")[-1]
-
-    # Create a deterministic filename using hash
-    filename = f"{file_hash}_{original_name}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
-    # If file already exists, return the existing path
-    if os.path.exists(filepath):
-        return JSONResponse(content={"url": f"/{filepath}"}, status_code=200)
-
-    # Save the file if it doesn't exist
-    with open(filepath, "wb") as buffer:
-        buffer.write(content)
-
-    return JSONResponse(content={"url": f"/{filepath}"}, status_code=201)
-
-
-@app.get("/api/uploads")
-async def list_uploaded_files():
-    try:
-        files = os.listdir(UPLOAD_DIR)
-        file_urls = [f"/{UPLOAD_DIR}/{filename}" for filename in files if os.path.isfile(os.path.join(UPLOAD_DIR, filename))]
-        return JSONResponse(content={"files": file_urls}, status_code=200)
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="Upload directory not found")
-
-
-@app.get("/api/upload/{filename}")
-async def get_file(filename: str):
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
-
-
-@app.put("/api/upload/{filename}")
-async def replace_file(
-    filename: str,
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
-):
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="File not found")
-
-    content = await file.read()
-    with open(filepath, "wb") as buffer:
-        buffer.write(content)
-
-    return JSONResponse(content={"message": "File replaced", "url": f"/{filepath}"}, status_code=200)
-
-
-@app.delete("/api/upload/{filename}")
-async def delete_file(
-    filename: str,
-    current_user: User = Depends(get_current_user)
-):
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="File not found")
-
-    os.remove(filepath)
-    return JSONResponse(content={"message": "File deleted"}, status_code=200)
-
-
 
 @app.get("/api/search", response_model=List[ArticleRes])
 def search_articles(q: str, db: Session = Depends(get_db)):

@@ -51,9 +51,9 @@ services:
     env_file:
       - ./minio/.env
     command: server /data --console-address ":9001"
-    # ports:
-    #   - "9000:9000" # API
-    #   - "9001:9001" # Web console
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Web console
     volumes:
       - minio_data:/data
     networks:
