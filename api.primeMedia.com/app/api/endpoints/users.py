@@ -11,7 +11,7 @@ from app.models.models import User, AuthorizedEmail, RefreshToken
 import hashlib
 from app.schemas.schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes, UserUpdate, TokenVerify
 from app.core.auth import hash_password, verify_password, create_access_token, create_refresh_token, decode_access_token
-from app.utils.mail import send_invite_email
+from app.utils.mail import Mail
 from app.api.dependencies import superadmin_required, store_refresh_token
 
 router = APIRouter()
@@ -68,17 +68,6 @@ def login(
     raw_refresh, hashed_refresh, expires_at = create_refresh_token()
 
     store_refresh_token(db, user.id, hashed_refresh, expires_at=expires_at, ip_address=request_ip, user_agent=request_user_agent)
-    
-    # # Set HttpOnly cookie
-    # response.set_cookie(
-    #     key="token",
-    #     value=token,
-    #     httponly=True,
-    #     max_age=60 * 60 * 24 * 7,  # 7 days
-    #     expires=60 * 60 * 24 * 7,
-    #     samesite="lax",
-    #     secure=False  # Set to True in production with HTTPS
-    # )
     
     return {
         "access_token": access_token,  # Still return for debugging, can remove later
@@ -244,7 +233,7 @@ async def authorize_email(
     db.commit()
     db.refresh(invite)
     try:
-        await send_invite_email(data.email, invite.slug)
+        await Mail.send_invite_email(data.email, invite.slug)
     except Exception as e:
         # Rollback the DB if email fails
         db.delete(invite)
