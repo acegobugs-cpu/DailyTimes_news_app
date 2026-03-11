@@ -32,7 +32,7 @@ async def get_category_by_slug(slug: str, db: Session = Depends(get_db)):
 
 
 @router.post("/categories", response_model=CategoryRes)
-async def create_category(category: CategoryCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create_category(category: CategoryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_category = Category(**category.dict())
     db.add(db_category)
     db.commit()

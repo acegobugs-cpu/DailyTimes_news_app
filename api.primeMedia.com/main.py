@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.utils.rate_limit import RateLimitMiddleware
-from app.api.v1.api import api_router
+from app.api.router import api_router
 
 app = FastAPI()
 # Rate limiting: global default and path-specific stricter limits

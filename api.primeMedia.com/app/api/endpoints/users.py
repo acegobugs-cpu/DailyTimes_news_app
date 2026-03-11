@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from uuid import uuid4
 from datetime import datetime
 from typing import List
+from jose import JWTError
 
 from app.db.database import get_db
 from app.models.models import User, AuthorizedEmail, RefreshToken
@@ -53,7 +54,7 @@ def login(
     data: UserLoginInput, 
     db: Session = Depends(get_db)
 ):
-    request_ip = request.client.host #if response.client else "unknown"
+    request_ip = request.client.host if request.client else "unknown"
     request_user_agent = request.headers.get("user-agent", "unknown") if request.headers else "unknown"
  
     user = db.query(User).filter(
@@ -123,8 +124,8 @@ def get_current_user(access_token: str = Cookie(None), db: Session = Depends(get
         return {"user": None}
 
 @router.post("/refresh")
-def refresh_token(request: Request, db: Session = Depends(get_db)):
-    body = request.json()
+async def refresh_token(request: Request, db: Session = Depends(get_db)):
+    body = await request.json()
     old_token_plain = body.get("refresh_token")
     if not old_token_plain:
         raise HTTPException(status_code=401, detail="Refresh token missing")
@@ -136,7 +137,7 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     # Generate new refresh token
-    new_token_plain, new_token_hash, new_expires_at = generate_refresh_token()
+    new_token_plain, new_token_hash, new_expires_at = create_refresh_token()
 
     # Store new token in DB
     new_token = RefreshToken(
@@ -147,6 +148,7 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
         replaced_by_id=None
     )
     db.add(new_token)
+    db.flush()
 
     # Revoke old token and link to new
     old_token.revoked = True
@@ -261,7 +263,7 @@ def delete_Email(email_id: int, db: Session = Depends(get_db), current_user: Use
         raise HTTPException(status_code=404, detail="AuthorizedEmail not found")
     db.delete(email)
     db.commit()
-    return {"detail": "Email deleted"}
+    return None
 
 @router.get("/users", response_model=List[UserRes])
 def list_users(db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
@@ -270,6 +272,9 @@ def list_users(db: Session = Depends(get_db), current_user: User = Depends(super
 @router.delete("/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     user = db.query(User).filter(User.id == user_id).first()
+
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

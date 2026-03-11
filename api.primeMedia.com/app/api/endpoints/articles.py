@@ -161,7 +161,7 @@ async def get_articles_by_category(
 
 
 @router.get("/categories/{slug}/articles", response_model=List[ArticleRes])
-async def get_articles_by_category(slug: str, limit: int = 10, db: Session = Depends(get_db)):
+async def get_category_articles(slug: str, limit: int = Query(10, ge=1, le=100), db: Session = Depends(get_db)):
     category = db.query(Category).filter(Category.slug == slug).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")

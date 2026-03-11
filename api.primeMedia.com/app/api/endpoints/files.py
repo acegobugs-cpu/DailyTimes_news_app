@@ -16,10 +16,17 @@ async def upload_file(
     minio: MinioService = Depends(get_minio),
     current_user: User = Depends(get_current_user)
 ):
-    content = await file.read()
+    chunks = []
+    total_size = 0
+    chunk_size = 64 * 1024  # 64KB chunks
     
-    if len(content) > settings.MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large")
+    while chunk := await file.read(chunk_size):
+        total_size += len(chunk)
+        if total_size > settings.MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
+        chunks.append(chunk)
+    
+    content = b"".join(chunks)
 
     file_hash = hashlib.md5(content).hexdigest()
     filename = f"{file_hash}_{file.filename}"
@@ -65,6 +72,8 @@ async def replace_file(
         raise HTTPException(status_code=404, detail="File not found")
 
     content = await file.read()
+    if len(content) > settings.MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large")
     minio.upload_file(content, filename, file.content_type)
     return {"message": "File replaced", "filename": filename}
 
