@@ -5,18 +5,18 @@ from uuid import uuid4
 from datetime import datetime
 from typing import List
 
-from database import get_db
-from models import User, AuthorizedEmail, RefreshToken
+from app.db.database import get_db
+from app.models.models import User, AuthorizedEmail, RefreshToken
 import hashlib
-from schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes, UserUpdate, TokenVerify
-from utils.auth import hash_password, verify_password, create_access_token, create_refresh_token, decode_access_token
-from utils.mail import send_invite_email
-from routes.dependencies import superadmin_required, store_refresh_token
+from app.schemas.schemas import UserCreate, UserRes, UserLoginInput, AuthorizedEmailCreate, AuthorizedEmailRes, UserUpdate, TokenVerify
+from app.core.auth import hash_password, verify_password, create_access_token, create_refresh_token, decode_access_token
+from app.utils.mail import send_invite_email
+from app.api.dependencies import superadmin_required, store_refresh_token
 
 router = APIRouter()
 
 
-@router.post("/api/register/{slug}", response_model=UserRes)
+@router.post("/register/{slug}", response_model=UserRes)
 def register_user(slug: str, data: UserCreate, db: Session = Depends(get_db)):
     # 1. Find authorized email with matching slug
     invite = db.query(AuthorizedEmail).filter_by(slug=slug, email=data.email).first()
@@ -46,7 +46,7 @@ def register_user(slug: str, data: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/api/login")
+@router.post("/login")
 def login(
     request: Request,
     response: Response,  # Add this to set cookies
@@ -92,7 +92,7 @@ def login(
     }
 
 
-@router.get("/api/me")
+@router.get("/me")
 def get_current_user(access_token: str = Cookie(None), db: Session = Depends(get_db)):
 
     if not access_token:
@@ -122,7 +122,7 @@ def get_current_user(access_token: str = Cookie(None), db: Session = Depends(get
     except JWTError:
         return {"user": None}
 
-@router.post("/api/refresh")
+@router.post("/refresh")
 def refresh_token(request: Request, db: Session = Depends(get_db)):
     body = request.json()
     old_token_plain = body.get("refresh_token")
@@ -171,7 +171,7 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
             "is_superuser": user.is_superuser}
     }
 
-@router.post("/api/verify")
+@router.post("/verify")
 def verify_token(payload: TokenVerify, db=Depends(get_db)):
 
     token = payload.token
@@ -191,14 +191,14 @@ def verify_token(payload: TokenVerify, db=Depends(get_db)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Token expired or invalid")
 
-@router.post("/api/logout")
+@router.post("/logout")
 def logout(response: Response):
     # Clear the token cookie
     response.delete_cookie(key="access_token")
     return {"message": "Logged out successfully"}
 
     
-@router.put("/api/users/{id}", response_model=UserRes)
+@router.put("/users/{id}", response_model=UserRes)
 def update_user(id: int, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     user = db.query(User).filter(User.id == id).first()
     if not user:
@@ -221,7 +221,7 @@ def update_user(id: int, data: UserUpdate, db: Session = Depends(get_db), curren
     return user
 
 
-@router.post("/api/authorize-emails", response_model=AuthorizedEmailRes)
+@router.post("/authorize-emails", response_model=AuthorizedEmailRes)
 async def authorize_email(
     data: AuthorizedEmailCreate,
     db: Session = Depends(get_db),
@@ -250,11 +250,11 @@ async def authorize_email(
         raise HTTPException(status_code=500, detail="Failed to send invitation email")
     return invite
 
-@router.get("/api/getEmails", response_model=List[AuthorizedEmailRes])
+@router.get("/getEmails", response_model=List[AuthorizedEmailRes])
 def list_authorized_emails(db:Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     return db.query(AuthorizedEmail).all()
 
-@router.delete("/api/delEmails/{email_id}", status_code=204)
+@router.delete("/delEmails/{email_id}", status_code=204)
 def delete_Email(email_id: int, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     email = db.query(AuthorizedEmail).filter(AuthorizedEmail.id == email_id).first()
     if not email:
@@ -263,11 +263,11 @@ def delete_Email(email_id: int, db: Session = Depends(get_db), current_user: Use
     db.commit()
     return {"detail": "Email deleted"}
 
-@router.get("/api/users", response_model=List[UserRes])
+@router.get("/users", response_model=List[UserRes])
 def list_users(db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     return db.query(User).all()
 
-@router.delete("/api/users/{user_id}", status_code=204)
+@router.delete("/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(superadmin_required)):
     user = db.query(User).filter(User.id == user_id).first()
 
