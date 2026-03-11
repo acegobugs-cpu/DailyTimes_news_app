@@ -15,16 +15,11 @@ export default function MediaRenderer({
   autoPlay = false,
   loop = false,
 }: MediaRendererProps) {
-  const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
   if (!media || !media.url || !media.mediaType) {
     return <p className="text-gray-400 italic">No media provided</p>;
   }
 
-  let src = media.url;
-  if (media.source === "local" && !src.startsWith("http")) {
-    src = `${baseURL}${media.url}`;
-  }
+  const src = media.url;
 
   switch (media.mediaType) {
     case "image":

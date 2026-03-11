@@ -77,7 +77,7 @@ function UploadsEditor() {
     setSelectedFiles((prev) =>
       prev.includes(fileUrl)
         ? prev.filter((f) => f !== fileUrl)
-        : [...prev, fileUrl]
+        : [...prev, fileUrl],
     );
   };
 
@@ -133,7 +133,7 @@ function UploadsEditor() {
           {uploadedFiles.length > 0 ? (
             uploadedFiles.map((file, index) => {
               const isImage = /\.(png|jpe?g|gif|bmp|webp)$/i.test(
-                file.filename
+                file.filename,
               );
               const isVideo = /\.(mp4|webm|ogg|mov|avi)$/i.test(file.filename);
               const isSelected = selectedFiles.includes(file.url);
@@ -150,9 +150,7 @@ function UploadsEditor() {
                 >
                   {isImage && (
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}${
-                        file.url
-                      }`}
+                      src={file.url}
                       className="w-full h-32 object-cover rounded"
                       alt={file.filename}
                       onError={(e) => {
@@ -229,7 +227,7 @@ function SelectedMedia({
   onConfirm,
 }: SelectedMediaProps) {
   const selectedFileData = uploadedFiles.filter((file) =>
-    files.includes(file.url)
+    files.includes(file.url),
   );
 
   return (
@@ -247,7 +245,7 @@ function SelectedMedia({
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {selectedFileData.map((file, index) => {
               const isImage = /\.(png|jpe?g|gif|bmp|webp)$/i.test(
-                file.filename
+                file.filename,
               );
               const isVideo = /\.(mp4|webm|ogg|mov|avi)$/i.test(file.filename);
 

@@ -11,6 +11,7 @@ from routes.dependencies import get_current_user
 router = APIRouter()
 
 # --- Configuration ---
+MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL")
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
@@ -64,7 +65,7 @@ async def list_uploaded_files(current_user: User = Depends(get_current_user)):
     try:
         response = s3.list_objects_v2(Bucket=BUCKET)
         files = response.get('Contents', [])
-        file_urls = [f"/api/upload/{obj['Key']}" for obj in files]
+        file_urls = [f"{MINIO_PUBLIC_URL}{obj['Key']}" for obj in files]
         return {"files": file_urls}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

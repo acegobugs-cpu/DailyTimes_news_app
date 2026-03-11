@@ -142,8 +142,6 @@ function SelectMedia({
     fetchUploadedFiles();
   }, []);
 
-  const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -172,13 +170,13 @@ function SelectMedia({
               >
                 {data.mediaType === "image" ? (
                   <img
-                    src={`${baseURL}${file}`}
+                    src={file}
                     className="w-full h-24 object-cover rounded"
                     alt="Uploaded media"
                   />
                 ) : (
                   <video
-                    src={`${baseURL}${file}`}
+                    src={file}
                     className="w-full h-24 object-cover rounded"
                   />
                 )}
