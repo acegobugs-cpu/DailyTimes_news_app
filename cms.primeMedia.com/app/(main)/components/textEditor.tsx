@@ -12,7 +12,12 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import { Editor, Extension } from "@tiptap/core";
+import {
+  Editor,
+  Extension,
+  Node as Nodde,
+  mergeAttributes,
+} from "@tiptap/core";
 import {
   Bold,
   Italic,
@@ -25,6 +30,7 @@ import {
   Redo,
   Highlighter,
   Images,
+  Play as VideoIcon,
   Link as LinkIcon,
   TextAlignStart,
   TextAlignEnd,
@@ -37,6 +43,17 @@ import { apiClient } from "@/app/lib/api";
 interface EditorProps {
   onChange?: (content: any) => void;
   initialValue?: any;
+}
+
+interface CustomVideoAttributes {
+  src: string | null;
+  poster?: string | null;
+  caption?: string | null;
+  provider?: string;
+  controls?: boolean;
+  autoplay?: boolean;
+  loop?: boolean;
+  type?: "video" | "embed";
 }
 
 declare module "@tiptap/core" {
@@ -61,6 +78,7 @@ export default function TextEditor({
   const [showFontSizeDropdown, setShowFontSizeDropdown] = useState(false);
   const [showAlignDropdown, setShowAlignDropdown] = useState(false);
   const [showImageWindow, setShowImageWindow] = useState(false);
+  const [showVideoWindow, setShowVideoWindow] = useState(false);
   const presetHighlights = [
     "#fff59d", // Yellow
     "#ffcc80", // Orange
@@ -133,6 +151,142 @@ export default function TextEditor({
       };
     },
   });
+  const Video = Nodde.create({
+    name: "video",
+
+    group: "block",
+
+    atom: true,
+
+    addAttributes() {
+      return {
+        src: {
+          default: "",
+        },
+
+        poster: {
+          default: null,
+        },
+
+        caption: {
+          default: null,
+        },
+
+        provider: {
+          default: "local", // local | youtube | vimeo
+        },
+
+        controls: {
+          default: true,
+        },
+
+        autoplay: {
+          default: false,
+        },
+
+        loop: {
+          default: false,
+        },
+
+        type: {
+          default: "video", // video | embed
+        },
+
+        width: {
+          default: "100%",
+        },
+
+        height: {
+          default: "auto",
+        },
+      };
+    },
+
+    parseHTML() {
+      return [{ tag: "video" }, { tag: "iframe" }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+      const { type, caption, poster, controls, autoplay, loop, src } =
+        HTMLAttributes;
+
+      if (type === "embed") {
+        return [
+          "figure",
+          {},
+          [
+            "div",
+            {
+              style:
+                "position:relative;width:100%;padding-bottom:56.25%;height:0;overflow:hidden;",
+            },
+            [
+              "iframe",
+              mergeAttributes({
+                src,
+                frameborder: "0",
+                allowfullscreen: "true",
+                allow:
+                  "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                style:
+                  "position:absolute;top:0;left:0;width:100%;height:100%;border:0;",
+              }),
+            ],
+          ],
+          caption ? ["figcaption", {}, caption] : null,
+        ];
+      }
+
+      return [
+        "figure",
+        {},
+        [
+          "video",
+          mergeAttributes({
+            src,
+            poster,
+            controls,
+            autoplay,
+            loop,
+            style: "width:100%;height:auto;display:block;",
+          }),
+        ],
+        caption ? ["figcaption", {}, caption] : null,
+      ];
+    },
+    addCommands() {
+      return {
+        insertVideo:
+          (attrs: CustomVideoAttributes) =>
+          ({ commands }: any) => {
+            if (!attrs.src) return false;
+
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                type: "video",
+                controls: true,
+                ...attrs,
+              },
+            });
+          },
+
+        insertEmbed:
+          (attrs: CustomVideoAttributes) =>
+          ({ commands }: any) => {
+            if (!attrs.src) return false;
+
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                type: "embed",
+                ...attrs,
+              },
+            });
+          },
+      };
+    },
+  });
 
   const FontSize = Extension.create({
     name: "fontSize",
@@ -200,6 +354,7 @@ export default function TextEditor({
       FontFamily,
       FontSize,
       Image,
+      Video,
       Highlight,
       Underline,
       Link.configure({
@@ -253,6 +408,7 @@ export default function TextEditor({
         <div className="flex items-center justify-between border rounded px-6 py-2 mx-6 bg-gray-50">
           <div className="border-l border-r p-auto">
             <button
+              type="button"
               onClick={() => editor.chain().focus().undo().run()}
               disabled={!editor.can().undo()}
               className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
@@ -260,6 +416,7 @@ export default function TextEditor({
               <Undo size={18} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().redo().run()}
               disabled={!editor.can().redo()}
               className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
@@ -274,6 +431,7 @@ export default function TextEditor({
             <div className="relative" ref={headingRef}>
               {/* Trigger */}
               <button
+                type="button"
                 onClick={() => setShowHeadingMenu((prev) => !prev)}
                 className="px-3 py-1 border rounded text-sm bg-white hover:bg-gray-100 min-w-[130px] text-left"
               >
@@ -284,6 +442,7 @@ export default function TextEditor({
               {showHeadingMenu && (
                 <div className="absolute top-full left-0 mt-2 bg-white border rounded shadow-lg z-50 w-48">
                   <button
+                    type="button"
                     onClick={() => {
                       editor.chain().focus().setParagraph().run();
                       setShowHeadingMenu(false);
@@ -296,6 +455,7 @@ export default function TextEditor({
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       editor.chain().focus().toggleHeading({ level: 1 }).run();
                       setShowHeadingMenu(false);
@@ -310,6 +470,7 @@ export default function TextEditor({
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       editor.chain().focus().toggleHeading({ level: 2 }).run();
                       setShowHeadingMenu(false);
@@ -324,6 +485,7 @@ export default function TextEditor({
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       editor.chain().focus().toggleHeading({ level: 3 }).run();
                       setShowHeadingMenu(false);
@@ -367,6 +529,7 @@ export default function TextEditor({
                   <div className="grid grid-cols-3 gap-2">
                     {presetSizes.map((size) => (
                       <button
+                        type="button"
                         key={size}
                         className={`px-2 py-1 rounded hover:bg-gray-100 ${
                           fontSize === size ? "bg-gray-200" : ""
@@ -414,18 +577,21 @@ export default function TextEditor({
 
           <div className="flex border-l border-r px-auto">
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleBold().run()}
               className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("bold") ? "bg-gray-200" : ""}`}
             >
               <Bold size={18} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleItalic().run()}
               className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("italic") ? "bg-gray-200" : ""}`}
             >
               <Italic size={18} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleUnderline().run()}
               className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("underline") ? "bg-gray-200" : ""}`}
             >
@@ -434,6 +600,7 @@ export default function TextEditor({
             <div className="relative" ref={colorRef}>
               {/* Trigger button */}
               <button
+                type="button"
                 onClick={() => setShowColorPicker((prev) => !prev)}
                 className="flex items-center flex-col p-1.5 rounded hover:bg-gray-200"
                 title="Text color"
@@ -471,6 +638,7 @@ export default function TextEditor({
                       "#0d9488",
                     ].map((color) => (
                       <button
+                        type="button"
                         key={color}
                         onClick={() => {
                           editor.chain().focus().setColor(color).run();
@@ -484,6 +652,7 @@ export default function TextEditor({
 
                   {/* Reset */}
                   <button
+                    type="button"
                     onClick={() => {
                       editor.chain().focus().unsetColor().run();
                       setShowColorPicker(false);
@@ -498,6 +667,7 @@ export default function TextEditor({
             <div className="relative">
               <div className="">
                 <button
+                  type="button"
                   onClick={() => setShowHighlightDropdown((prev) => !prev)}
                   className="p-1.5 rounded hover:bg-gray-200"
                 >
@@ -508,6 +678,7 @@ export default function TextEditor({
                   <div className="absolute top-full left-0 mt-1 bg-white border rounded shadow-lg p-2 z-50 grid grid-cols-4 gap-2 w-52">
                     {presetHighlights.map((bg) => (
                       <button
+                        type="button"
                         key={bg}
                         style={{ backgroundColor: bg }}
                         className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition"
@@ -529,6 +700,7 @@ export default function TextEditor({
 
           <div>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
               className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("blockquote") ? "bg-gray-200" : ""}`}
               title="Quote"
@@ -536,6 +708,7 @@ export default function TextEditor({
               <Quote />
             </button>
             <button
+              type="button"
               onClick={() => {
                 const url = window.prompt("Enter link URL:");
                 if (url) {
@@ -548,11 +721,20 @@ export default function TextEditor({
               <LinkIcon />
             </button>
             <button
+              type="button"
               onClick={() => setShowImageWindow(true)}
               className="p-1.5 hover:bg-gray-200 rounded"
               title="Insert image"
             >
               <Images />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowVideoWindow(true)}
+              className="p-1.5 hover:bg-gray-200 rounded"
+              title="Insert video"
+            >
+              <VideoIcon />
             </button>
           </div>
 
@@ -560,6 +742,7 @@ export default function TextEditor({
             <div className="relative">
               {/* Trigger button */}
               <button
+                type="button"
                 onClick={() => setShowAlignDropdown((prev) => !prev)}
                 className="flex items-center p-1.5 rounded hover:bg-gray-200"
               >
@@ -582,6 +765,7 @@ export default function TextEditor({
                       editor.getAttributes("paragraph").textAlign || "left";
                     return (
                       <button
+                        type="button"
                         key={opt.value}
                         className={`flex items-center gap-2 px-3 py-1 w-full text-left hover:bg-gray-100 ${
                           currentAlign === opt.value ? "bg-gray-200" : ""
@@ -601,19 +785,21 @@ export default function TextEditor({
             </div>
 
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("bulletList") ? "bg-gray-200" : ""}`}
             >
               <List size={18} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
               className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("orderedList") ? "bg-gray-200" : ""}`}
             >
               <ListOrdered size={18} />
             </button>
           </div>
-          {/* <button
+          {/* <button type="button"
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
           className={`p-1.5 hover:bg-gray-200 rounded ${editor.isActive("codeBlock") ? "bg-gray-200" : ""}`}
           title="Code block"
@@ -632,18 +818,21 @@ export default function TextEditor({
         <BubbleMenu editor={editor}>
           <div className="flex bg-black text-white rounded shadow-lg p-1 gap-1">
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleBold().run()}
               className={`p-2 hover:bg-gray-800 rounded ${editor.isActive("bold") ? "bg-gray-800" : ""}`}
             >
               <Bold size={16} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleItalic().run()}
               className={`p-2 hover:bg-gray-800 rounded ${editor.isActive("italic") ? "bg-gray-800" : ""}`}
             >
               <Italic size={16} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleUnderline().run()}
               className={`p-2 hover:bg-gray-800 rounded ${editor.isActive("underline") ? "bg-gray-800" : ""}`}
             >
@@ -655,6 +844,7 @@ export default function TextEditor({
         <FloatingMenu editor={editor}>
           <div className="flex bg-black text-white rounded shadow-lg p-1 gap-1">
             <button
+              type="button"
               onClick={() =>
                 editor.chain().focus().toggleHeading({ level: 1 }).run()
               }
@@ -663,6 +853,7 @@ export default function TextEditor({
               H1
             </button>
             <button
+              type="button"
               onClick={() =>
                 editor.chain().focus().toggleHeading({ level: 2 }).run()
               }
@@ -671,12 +862,14 @@ export default function TextEditor({
               H2
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               className="p-2 hover:bg-gray-800 rounded"
             >
               <List size={16} />
             </button>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
               className="p-2 hover:bg-gray-800 rounded"
             >
@@ -691,16 +884,22 @@ export default function TextEditor({
           onClose={() => setShowImageWindow(false)}
         />
       )}
+      {showVideoWindow && (
+        <VideoWindow
+          editor={editor}
+          onClose={() => setShowVideoWindow(false)}
+        />
+      )}
     </>
   );
 }
 
-interface ImgWindow {
+interface WindowParam {
   editor: Editor;
   onClose: any;
 }
 
-export function ImageWindow({ editor, onClose }: ImgWindow) {
+export function ImageWindow({ editor, onClose }: WindowParam) {
   const [url, setUrl] = useState("");
   const [media, setMedia] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -756,7 +955,9 @@ export function ImageWindow({ editor, onClose }: ImgWindow) {
       <div className="bg-white h-full w-3/4 rounded-lg shadow-lg p-4">
         <div className="flex justify-between mb-4">
           <h2 className="font-semibold">Insert Image</h2>
-          <button onClick={onClose}>✕</button>
+          <button type="button" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         {/* URL INPUT */}
@@ -770,6 +971,7 @@ export function ImageWindow({ editor, onClose }: ImgWindow) {
               placeholder="https://example.com/image.jpg"
             />
             <button
+              type="button"
               onClick={() => {
                 if (url.trim()) {
                   insertImage(url.trim());
@@ -811,6 +1013,145 @@ export function ImageWindow({ editor, onClose }: ImgWindow) {
                   onClick={() => insertImage(img)}
                 />
               ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function VideoWindow({ editor, onClose }: WindowParam) {
+  const [url, setUrl] = useState("");
+  const [embed, setEmbed] = useState("");
+  const [videos, setVideos] = useState([]);
+
+  // useEffect(() => {
+  //   apiClient.getVideos().then((res) => {
+  //     setVideos(res.files);
+  //   });
+  // }, []);
+
+  const insertVideo = (src: string) => {
+    editor
+      .chain()
+      .focus()
+      .insertVideo({
+        src: src,
+        poster: "thumbnail",
+        caption: "Prime minister speech",
+      })
+      .run();
+    onClose();
+  };
+
+  const insertEmbed = (src: string) => {
+    editor
+      .chain()
+      .focus()
+      .insertEmbed({ src: src, caption: "Interview clip", provider: "youtube" })
+      .run();
+    onClose();
+  };
+
+  const uploadVideo = async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+
+    const res = await fetch("/api/media/upload-video", {
+      method: "POST",
+      body: form,
+    });
+
+    const data = await res.json();
+    insertVideo(data.url);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white text-main w-[800px] rounded p-6">
+        <div className="flex justify-between mb-4">
+          <h2 className="font-semibold">Insert Video</h2>
+          <button type="button" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        {/* Upload */}
+        <div className="mb-6">
+          <label className="text-sm font-medium">Upload Video</label>
+          <input
+            type="file"
+            accept="video/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadVideo(file);
+            }}
+          />
+        </div>
+
+        {/* External URL */}
+        <div className="mb-6">
+          <label className="text-sm font-medium">Video URL</label>
+          <div className="flex gap-2 mt-1">
+            <input
+              className="border px-2 py-1 flex-1"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://site.com/video.mp4"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (url.trim()) {
+                  insertVideo(url.trim());
+                }
+              }}
+              disabled={!url.trim()}
+              className="bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              Insert
+            </button>
+          </div>
+        </div>
+
+        {/* Embed */}
+        <div className="mb-6">
+          <label className="text-sm font-medium">Embed Link</label>
+          <div className="flex gap-2 mt-1">
+            <input
+              className="border px-2 py-1 flex-1"
+              value={embed}
+              onChange={(e) => setEmbed(e.target.value)}
+              placeholder="https://youtube.com/embed/..."
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (embed.trim()) {
+                  insertEmbed(embed.trim());
+                }
+              }}
+              disabled={!embed.trim()}
+              className="bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              Embed
+            </button>
+          </div>
+        </div>
+
+        {/* Media Library */}
+        <div>
+          <label className="text-sm font-medium">Video Library</label>
+
+          <div className="grid grid-cols-3 gap-3 mt-3 max-h-[300px] overflow-y-auto">
+            {videos.map((video: any) => (
+              <video
+                key={video.url}
+                src={video.url}
+                className="cursor-pointer rounded"
+                onClick={() => insertVideo(video.url)}
+              />
+            ))}
           </div>
         </div>
       </div>

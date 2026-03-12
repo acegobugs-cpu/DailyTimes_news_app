@@ -12,7 +12,12 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
-import { Editor, Extension } from "@tiptap/core";
+import {
+  Editor,
+  Extension,
+  Node as Nodde,
+  mergeAttributes,
+} from "@tiptap/core";
 import {
   Bold,
   Italic,
@@ -25,6 +30,7 @@ import {
   Redo,
   Highlighter,
   Images,
+  Play as VideoIcon,
   Link as LinkIcon,
   TextAlignStart,
   TextAlignEnd,
@@ -32,6 +38,17 @@ import {
   TextAlignJustify,
 } from "lucide-react";
 import { apiClient } from "../lib/api";
+
+type CustomVideoAttributes = {
+  src: string | null;
+  poster?: string | null;
+  caption?: string | null;
+  provider?: string;
+  controls?: boolean;
+  autoplay?: boolean;
+  loop?: boolean;
+  type?: "video" | "embed";
+};
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -52,6 +69,7 @@ export default function TextEditor() {
   const [showFontSizeDropdown, setShowFontSizeDropdown] = useState(false);
   const [showAlignDropdown, setShowAlignDropdown] = useState(false);
   const [showImageWindow, setShowImageWindow] = useState(false);
+  const [showVideoWindow, setShowVideoWindow] = useState(false);
   const presetHighlights = [
     "#fff59d", // Yellow
     "#ffcc80", // Orange
@@ -125,6 +143,143 @@ export default function TextEditor() {
     },
   });
 
+  const Video = Nodde.create({
+    name: "video",
+
+    group: "block",
+
+    atom: true,
+
+    addAttributes() {
+      return {
+        src: {
+          default: "",
+        },
+
+        poster: {
+          default: null,
+        },
+
+        caption: {
+          default: null,
+        },
+
+        provider: {
+          default: "local", // local | youtube | vimeo
+        },
+
+        controls: {
+          default: true,
+        },
+
+        autoplay: {
+          default: false,
+        },
+
+        loop: {
+          default: false,
+        },
+
+        type: {
+          default: "video", // video | embed
+        },
+
+        width: {
+          default: "100%",
+        },
+
+        height: {
+          default: "auto",
+        },
+      };
+    },
+
+    parseHTML() {
+      return [{ tag: "video" }, { tag: "iframe" }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+      const { type, caption, poster, controls, autoplay, loop, src } =
+        HTMLAttributes;
+
+      if (type === "embed") {
+        return [
+          "figure",
+          {},
+          [
+            "div",
+            {
+              style:
+                "position:relative;width:100%;padding-bottom:56.25%;height:0;overflow:hidden;",
+            },
+            [
+              "iframe",
+              mergeAttributes({
+                src,
+                frameborder: "0",
+                allowfullscreen: "true",
+                allow:
+                  "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                style:
+                  "position:absolute;top:0;left:0;width:100%;height:100%;border:0;",
+              }),
+            ],
+          ],
+          caption ? ["figcaption", {}, caption] : null,
+        ];
+      }
+
+      return [
+        "figure",
+        {},
+        [
+          "video",
+          mergeAttributes({
+            src,
+            poster,
+            controls,
+            autoplay,
+            loop,
+            style: "width:100%;height:auto;display:block;",
+          }),
+        ],
+        caption ? ["figcaption", {}, caption] : null,
+      ];
+    },
+    addCommands() {
+      return {
+        insertVideo:
+          (attrs: CustomVideoAttributes) =>
+          ({ commands }: any) => {
+            if (!attrs.src) return false;
+
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                type: "video",
+                controls: true,
+                ...attrs,
+              },
+            });
+          },
+
+        insertEmbed:
+          (attrs: CustomVideoAttributes) =>
+          ({ commands }: any) => {
+            if (!attrs.src) return false;
+
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                type: "embed",
+                ...attrs,
+              },
+            });
+          },
+      };
+    },
+  });
+
   const FontSize = Extension.create({
     name: "fontSize",
 
@@ -191,6 +346,7 @@ export default function TextEditor() {
       FontFamily,
       FontSize,
       Image,
+      Video,
       Highlight,
       Underline,
     ],
@@ -539,6 +695,13 @@ export default function TextEditor() {
             >
               <Images />
             </button>
+            <button
+              onClick={() => setShowVideoWindow(true)}
+              className="p-1.5 hover:bg-gray-200 rounded"
+              title="Insert video"
+            >
+              <VideoIcon />
+            </button>
           </div>
 
           <div className="flex justify-between items-center">
@@ -675,17 +838,24 @@ export default function TextEditor() {
           editor={editor}
           onClose={() => setShowImageWindow(false)}
         />
+      )}{" "}
+      ||{" "}
+      {showVideoWindow && (
+        <VideoWindow
+          editor={editor}
+          onClose={() => setShowVideoWindow(false)}
+        />
       )}
     </>
   );
 }
 
-interface ImgWindow {
+interface WindowParam {
   editor: Editor;
   onClose: any;
 }
 
-export function ImageWindow({ editor, onClose }: ImgWindow) {
+export function ImageWindow({ editor, onClose }: WindowParam) {
   const [url, setUrl] = useState("");
   const [media, setMedia] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -778,6 +948,131 @@ export function ImageWindow({ editor, onClose }: ImgWindow) {
                   onClick={() => insertImage(img)}
                 />
               ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function VideoWindow({ editor, onClose }: WindowParam) {
+  const [url, setUrl] = useState("");
+  const [embed, setEmbed] = useState("");
+  const [videos, setVideos] = useState([]);
+
+  // useEffect(() => {
+  //   apiClient.getVideos().then((res) => {
+  //     setVideos(res.files);
+  //   });
+  // }, []);
+
+  const insertVideo = (src: string) => {
+    editor
+      .chain()
+      .focus()
+      .insertVideo({
+        src: src,
+        poster: "thumbnail",
+        caption: "Prime minister speech",
+      })
+      .run();
+    onClose();
+  };
+
+  const insertEmbed = (src: string) => {
+    editor
+      .chain()
+      .focus()
+      .insertEmbed({ src: src, caption: "Interview clip", provider: "youtube" })
+      .run();
+    onClose();
+  };
+
+  const uploadVideo = async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+
+    const res = await fetch("/api/media/upload-video", {
+      method: "POST",
+      body: form,
+    });
+
+    const data = await res.json();
+    insertVideo(data.url);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white text-main w-[800px] rounded p-6">
+        <div className="flex justify-between mb-4">
+          <h2 className="font-semibold">Insert Video</h2>
+          <button onClick={onClose}>✕</button>
+        </div>
+
+        {/* Upload */}
+        <div className="mb-6">
+          <label className="text-sm font-medium">Upload Video</label>
+          <input
+            type="file"
+            accept="video/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadVideo(file);
+            }}
+          />
+        </div>
+
+        {/* External URL */}
+        <div className="mb-6">
+          <label className="text-sm font-medium">Video URL</label>
+          <div className="flex gap-2 mt-1">
+            <input
+              className="border px-2 py-1 flex-1"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://site.com/video.mp4"
+            />
+            <button
+              onClick={() => insertVideo(url)}
+              className="bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              Insert
+            </button>
+          </div>
+        </div>
+
+        {/* Embed */}
+        <div className="mb-6">
+          <label className="text-sm font-medium">Embed Link</label>
+          <div className="flex gap-2 mt-1">
+            <input
+              className="border px-2 py-1 flex-1"
+              value={embed}
+              onChange={(e) => setEmbed(e.target.value)}
+              placeholder="https://youtube.com/embed/..."
+            />
+            <button
+              onClick={() => insertEmbed(embed)}
+              className="bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              Embed
+            </button>
+          </div>
+        </div>
+
+        {/* Media Library */}
+        <div>
+          <label className="text-sm font-medium">Video Library</label>
+
+          <div className="grid grid-cols-3 gap-3 mt-3 max-h-[300px] overflow-y-auto">
+            {videos.map((video: any) => (
+              <video
+                key={video.url}
+                src={video.url}
+                className="cursor-pointer rounded"
+                onClick={() => insertVideo(video.url)}
+              />
+            ))}
           </div>
         </div>
       </div>
