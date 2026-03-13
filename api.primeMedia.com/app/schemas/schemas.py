@@ -150,3 +150,25 @@ class ArticleRes(ArticleBase):
     class Config:
         from_attributes = True
 
+class MediaReq(BaseModel):
+    name: str
+    type: str
+    source: str
+    caption: Optional[str]
+    thumbnail: Optional[str]
+    controls: Optional[str]
+    alt: Optional[str]
+    credit: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+class MediaRes(BaseModel):
+    name: str
+    url: str
+    type: str
+
+    class Config:
+        from_attributes = True
+
+    

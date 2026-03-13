@@ -108,3 +108,18 @@ class ArticleLocale(Base):
 
     article = relationship("Article", back_populates="translations")
     editor = relationship("User")
+
+
+class Media(Base):
+    __tablename__ = "media"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    url = Column(String, nullable=False)
+    type = Column(String)
+    caption = Column(String)
+    thumbnail = Column(String)
+    controls = Column(Integer)
+    source = Column(String)
+    alt = Column(String)
+    credit = Column(String)

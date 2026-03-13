@@ -1,8 +1,10 @@
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status, Request, Form
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from typing import Optional
 from app.db.database import get_db
 from app.models.models import User, RefreshToken
+from app.schemas.schemas import MediaReq
 from datetime import datetime
 from jose import jwt, JWTError
 from app.core.auth import SECRET_KEY
@@ -72,3 +74,19 @@ def store_refresh_token(db: Session, user_id: int, token_hash: str, expires_at: 
     db.commit()
     db.refresh(refresh)
     return refresh.id
+
+
+def media_req_form(
+    name: str = Form(...),
+    type: str = Form(...),
+    source: str = Form(...),
+    caption: Optional[str] = Form(None),
+    thumbnail: Optional[str] = Form(None),
+    controls: Optional[str] = Form(None),
+    alt: Optional[str] = Form(None),
+    credit: Optional[str] = Form(None),
+) -> MediaReq:
+    return MediaReq(
+        name=name, type=type, source=source, caption=caption,
+        thumbnail=thumbnail, controls=controls, alt=alt, credit=credit
+    )

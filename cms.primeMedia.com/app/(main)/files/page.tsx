@@ -50,6 +50,9 @@ function UploadsEditor() {
   const handleFileUpload = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("name", "filename");
+    formData.append("type", "image");
+    formData.append("source", "user");
 
     try {
       setUploading(true);

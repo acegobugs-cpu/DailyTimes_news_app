@@ -29,8 +29,7 @@ import {
   Undo,
   Redo,
   Highlighter,
-  Images,
-  Play as VideoIcon,
+  HardDrive,
   Link as LinkIcon,
   TextAlignStart,
   TextAlignEnd,
@@ -39,6 +38,7 @@ import {
   UnderlineIcon,
 } from "lucide-react";
 import { apiClient } from "@/app/lib/api";
+import { MediaBlock, FontSize, Highlight } from "./editorExtentions";
 
 interface EditorProps {
   onChange?: (content: any) => void;
@@ -113,229 +113,6 @@ export default function TextEditor({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const Highlight = Extension.create({
-    name: "highlight",
-    addGlobalAttributes() {
-      return [
-        {
-          types: ["textStyle"],
-          attributes: {
-            backgroundColor: {
-              default: null,
-              parseHTML: (el) => el.style.backgroundColor || null,
-              renderHTML: (attrs) =>
-                attrs.backgroundColor
-                  ? { style: `background-color: ${attrs.backgroundColor}` }
-                  : {},
-            },
-          },
-        },
-      ];
-    },
-    addCommands() {
-      return {
-        setTextHighlight: (color: string) => (chain: any) => {
-          // if (!attributes?.color) return false;
-          return chain()
-            .setMark("textStyle", {
-              backgroundColor: color,
-            })
-            .run();
-        },
-        unsetTextHighlight: () => (chain: any) => {
-          return chain()
-            .setMark("textStyle", { backgroundColor: null })
-            .removeEmptyTextStyle()
-            .run();
-        },
-      };
-    },
-  });
-  const Video = Nodde.create({
-    name: "video",
-
-    group: "block",
-
-    atom: true,
-
-    addAttributes() {
-      return {
-        src: {
-          default: "",
-        },
-
-        poster: {
-          default: null,
-        },
-
-        caption: {
-          default: null,
-        },
-
-        provider: {
-          default: "local", // local | youtube | vimeo
-        },
-
-        controls: {
-          default: true,
-        },
-
-        autoplay: {
-          default: false,
-        },
-
-        loop: {
-          default: false,
-        },
-
-        type: {
-          default: "video", // video | embed
-        },
-
-        width: {
-          default: "100%",
-        },
-
-        height: {
-          default: "auto",
-        },
-      };
-    },
-
-    parseHTML() {
-      return [{ tag: "video" }, { tag: "iframe" }];
-    },
-
-    renderHTML({ HTMLAttributes }) {
-      const { type, caption, poster, controls, autoplay, loop, src } =
-        HTMLAttributes;
-
-      if (type === "embed") {
-        return [
-          "figure",
-          {},
-          [
-            "div",
-            {
-              style:
-                "position:relative;width:100%;padding-bottom:56.25%;height:0;overflow:hidden;",
-            },
-            [
-              "iframe",
-              mergeAttributes({
-                src,
-                frameborder: "0",
-                allowfullscreen: "true",
-                allow:
-                  "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-                style:
-                  "position:absolute;top:0;left:0;width:100%;height:100%;border:0;",
-              }),
-            ],
-          ],
-          caption ? ["figcaption", {}, caption] : null,
-        ];
-      }
-
-      return [
-        "figure",
-        {},
-        [
-          "video",
-          mergeAttributes({
-            src,
-            poster,
-            controls,
-            autoplay,
-            loop,
-            style: "width:100%;height:auto;display:block;",
-          }),
-        ],
-        caption ? ["figcaption", {}, caption] : null,
-      ];
-    },
-    addCommands() {
-      return {
-        insertVideo:
-          (attrs: CustomVideoAttributes) =>
-          ({ commands }: any) => {
-            if (!attrs.src) return false;
-
-            return commands.insertContent({
-              type: this.name,
-              attrs: {
-                type: "video",
-                controls: true,
-                ...attrs,
-              },
-            });
-          },
-
-        insertEmbed:
-          (attrs: CustomVideoAttributes) =>
-          ({ commands }: any) => {
-            if (!attrs.src) return false;
-
-            return commands.insertContent({
-              type: this.name,
-              attrs: {
-                type: "embed",
-                ...attrs,
-              },
-            });
-          },
-      };
-    },
-  });
-
-  const FontSize = Extension.create({
-    name: "fontSize",
-
-    addOptions() {
-      return {
-        types: ["textStyle"],
-      };
-    },
-
-    addGlobalAttributes() {
-      return [
-        {
-          types: this.options.types,
-          attributes: {
-            fontSize: {
-              default: null,
-              parseHTML: (element) =>
-                element.style.fontSize.replace("px", "") || null,
-              renderHTML: (attributes) => {
-                if (!attributes.fontSize) {
-                  return {};
-                }
-                return { style: `font-size: ${attributes.fontSize}px` };
-              },
-            },
-          },
-        },
-      ];
-    },
-
-    addCommands() {
-      return {
-        setFontSize:
-          (size: string) =>
-          ({ chain }) => {
-            return chain().setMark("textStyle", { fontSize: size }).run();
-          },
-        unsetFontSize:
-          () =>
-          ({ chain }) => {
-            return chain()
-              .setMark("textStyle", { fontSize: null })
-              .removeEmptyTextStyle()
-              .run();
-          },
-      };
-    },
-  });
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -353,8 +130,8 @@ export default function TextEditor({
       TextStyle,
       FontFamily,
       FontSize,
+      MediaBlock,
       Image,
-      Video,
       Highlight,
       Underline,
       Link.configure({
@@ -726,15 +503,7 @@ export default function TextEditor({
               className="p-1.5 hover:bg-gray-200 rounded"
               title="Insert image"
             >
-              <Images />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowVideoWindow(true)}
-              className="p-1.5 hover:bg-gray-200 rounded"
-              title="Insert video"
-            >
-              <VideoIcon />
+              <HardDrive />
             </button>
           </div>
 
@@ -879,30 +648,25 @@ export default function TextEditor({
         </FloatingMenu>
       </div>
       {showImageWindow && (
-        <ImageWindow
+        <MediaWindow
           editor={editor}
           onClose={() => setShowImageWindow(false)}
-        />
-      )}
-      {showVideoWindow && (
-        <VideoWindow
-          editor={editor}
-          onClose={() => setShowVideoWindow(false)}
         />
       )}
     </>
   );
 }
 
-interface WindowParam {
-  editor: Editor;
-  onClose: any;
-}
+type Props = {
+  editor: any;
+  onClose: () => void;
+};
 
-export function ImageWindow({ editor, onClose }: WindowParam) {
+export function MediaWindow({ editor, onClose }: Props) {
+  const [tab, setTab] = useState<"image" | "video" | "embed">("image");
   const [url, setUrl] = useState("");
+  const [caption, setCaption] = useState("");
   const [media, setMedia] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUploadedFiles = async () => {
@@ -912,248 +676,146 @@ export function ImageWindow({ editor, onClose }: WindowParam) {
       } catch (error) {
         console.error("Failed to fetch uploaded files:", error);
         setMedia([]);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchUploadedFiles();
   }, []);
 
-  const insertImage = (src: string) => {
-    editor.chain().focus().setImage({ src }).run();
+  const insert = (src: string) => {
+    if (tab === "image") {
+      editor.chain().focus().insertImage({ src, caption }).run();
+    }
+
+    if (tab === "video") {
+      editor
+        .chain()
+        .focus()
+        .insertVideo({
+          src,
+          caption,
+          controls: true,
+        })
+        .run();
+    }
+
+    if (tab === "embed") {
+      editor
+        .chain()
+        .focus()
+        .insertEmbed({
+          src,
+          caption,
+        })
+        .run();
+    }
+
     onClose();
   };
 
-  const uploadImage = async (file: File) => {
-    try {
-      const form = new FormData();
-      form.append("file", file);
+  const upload = async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("name", "filename");
+    form.append("type", "image");
+    form.append("source", "user");
 
-      const res = await fetch("/api/media/upload", {
-        method: "POST",
-        body: form,
-      });
+    const result: any = await apiClient.uploadFile(form);
 
-      if (!res.ok) {
-        throw new Error(`Upload failed: ${res.status}`);
-      }
+    const data = await result.json();
 
-      const data = await res.json();
-      if (!data.url) {
-        throw new Error("No URL returned from upload");
-      }
-      insertImage(data.url);
-    } catch (error) {
-      console.error("Image upload failed:", error);
-      // Consider adding user-facing error feedback here
-    }
+    insert(data.url);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center text-main justify-center z-50">
-      <div className="bg-white h-full w-3/4 rounded-lg shadow-lg p-4">
-        <div className="flex justify-between mb-4">
-          <h2 className="font-semibold">Insert Image</h2>
-          <button type="button" onClick={onClose}>
-            ✕
-          </button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white w-4/5 h-[80vh] rounded-lg shadow p-4 flex flex-col">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-lg">Insert Media</h2>
+          <button onClick={onClose}>✕</button>
+        </div>
+
+        {/* TABS */}
+        <div className="flex gap-2 border-b mb-4">
+          {["image", "video", "embed"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t as any)}
+              className={`px-3 py-1 rounded-t ${
+                tab === t ? "bg-gray-200" : ""
+              }`}
+            >
+              {t.toUpperCase()}
+            </button>
+          ))}
         </div>
 
         {/* URL INPUT */}
         <div className="mb-4">
-          <label className="text-sm font-medium">Image URL</label>
+          <label className="text-sm font-medium">External URL</label>
+
           <div className="flex gap-2 mt-1">
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className="border rounded px-2 py-1 flex-1"
-              placeholder="https://example.com/image.jpg"
+              placeholder="https://..."
             />
+
             <button
-              type="button"
-              onClick={() => {
-                if (url.trim()) {
-                  insertImage(url.trim());
-                }
-              }}
-              disabled={!url.trim()}
-              className="bg-blue-600 text-white px-3 py-1 rounded"
+              onClick={() => insert(url)}
+              className="bg-blue-600 text-white px-3 rounded"
             >
               Insert
             </button>
           </div>
+        </div>
+
+        {/* CAPTION */}
+        <div className="mb-4">
+          <label className="text-sm font-medium">Caption</label>
+          <input
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            className="border rounded px-2 py-1 w-full"
+          />
         </div>
 
         {/* UPLOAD */}
-        <div className="mb-4">
-          <label className="text-sm font-medium">Upload</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) uploadImage(file);
-            }}
-          />
-        </div>
+        {tab !== "embed" && (
+          <div className="mb-4">
+            <label className="text-sm font-medium">Upload</label>
+
+            <input
+              type="file"
+              accept={tab === "image" ? "image/*" : "video/*"}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) upload(file);
+              }}
+            />
+          </div>
+        )}
 
         {/* MEDIA LIBRARY */}
-        <div>
-          <label className="text-sm font-medium">Media Library</label>
+        {tab !== "embed" && (
+          <div className="flex-1 overflow-y-auto">
+            <label className="text-sm font-medium">Media Library</label>
 
-          <div className="grid grid-cols-6 gap-2 mt-2 max-h-[250px] overflow-y-auto">
-            {!loading &&
-              media.map((img: any, idx) => (
-                <img
-                  key={idx}
-                  src={img}
-                  loading="lazy"
-                  className="cursor-pointer rounded hover:opacity-80"
-                  onClick={() => insertImage(img)}
-                />
+            <div className="grid grid-cols-5 gap-2 mt-2">
+              {media.map((file, i) => (
+                <div
+                  key={i}
+                  onClick={() => insert(file)}
+                  className="cursor-pointer border rounded overflow-hidden hover:opacity-80"
+                >
+                  {tab === "image" ? <img src={file} /> : <video src={file} />}
+                </div>
               ))}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function VideoWindow({ editor, onClose }: WindowParam) {
-  const [url, setUrl] = useState("");
-  const [embed, setEmbed] = useState("");
-  const [videos, setVideos] = useState([]);
-
-  // useEffect(() => {
-  //   apiClient.getVideos().then((res) => {
-  //     setVideos(res.files);
-  //   });
-  // }, []);
-
-  const insertVideo = (src: string) => {
-    editor
-      .chain()
-      .focus()
-      .insertVideo({
-        src: src,
-        poster: "thumbnail",
-        caption: "Prime minister speech",
-      })
-      .run();
-    onClose();
-  };
-
-  const insertEmbed = (src: string) => {
-    editor
-      .chain()
-      .focus()
-      .insertEmbed({ src: src, caption: "Interview clip", provider: "youtube" })
-      .run();
-    onClose();
-  };
-
-  const uploadVideo = async (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-
-    const res = await fetch("/api/media/upload-video", {
-      method: "POST",
-      body: form,
-    });
-
-    const data = await res.json();
-    insertVideo(data.url);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white text-main w-[800px] rounded p-6">
-        <div className="flex justify-between mb-4">
-          <h2 className="font-semibold">Insert Video</h2>
-          <button type="button" onClick={onClose}>
-            ✕
-          </button>
-        </div>
-
-        {/* Upload */}
-        <div className="mb-6">
-          <label className="text-sm font-medium">Upload Video</label>
-          <input
-            type="file"
-            accept="video/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) uploadVideo(file);
-            }}
-          />
-        </div>
-
-        {/* External URL */}
-        <div className="mb-6">
-          <label className="text-sm font-medium">Video URL</label>
-          <div className="flex gap-2 mt-1">
-            <input
-              className="border px-2 py-1 flex-1"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://site.com/video.mp4"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (url.trim()) {
-                  insertVideo(url.trim());
-                }
-              }}
-              disabled={!url.trim()}
-              className="bg-blue-600 text-white px-3 py-1 rounded"
-            >
-              Insert
-            </button>
-          </div>
-        </div>
-
-        {/* Embed */}
-        <div className="mb-6">
-          <label className="text-sm font-medium">Embed Link</label>
-          <div className="flex gap-2 mt-1">
-            <input
-              className="border px-2 py-1 flex-1"
-              value={embed}
-              onChange={(e) => setEmbed(e.target.value)}
-              placeholder="https://youtube.com/embed/..."
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (embed.trim()) {
-                  insertEmbed(embed.trim());
-                }
-              }}
-              disabled={!embed.trim()}
-              className="bg-blue-600 text-white px-3 py-1 rounded"
-            >
-              Embed
-            </button>
-          </div>
-        </div>
-
-        {/* Media Library */}
-        <div>
-          <label className="text-sm font-medium">Video Library</label>
-
-          <div className="grid grid-cols-3 gap-3 mt-3 max-h-[300px] overflow-y-auto">
-            {videos.map((video: any) => (
-              <video
-                key={video.url}
-                src={video.url}
-                className="cursor-pointer rounded"
-                onClick={() => insertVideo(video.url)}
-              />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

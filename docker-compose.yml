@@ -44,6 +44,25 @@ services:
     networks:
       - internal
 
+  # --- postgresDb Storage ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: db
+    restart: always
+    env_file:
+      - ./postgres/.env # Create this folder/file
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # --- MinIO Object Storage ---
   minio:
     image: minio/minio:latest
@@ -117,6 +136,8 @@ services:
 volumes:
   mysql_data:
     name: news_mysql_data
+  postgres_data:
+    name: news_postgres_data
   minio_data:
     name: news_minio_data
 
