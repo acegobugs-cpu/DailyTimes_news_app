@@ -14,12 +14,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/components/AuthContext";
 
-interface HeaderProps {
-  panel: boolean;
-  setPanel: (value: boolean | ((prev: boolean) => boolean)) => void;
-}
-
-export default function Nav({ panel, setPanel }: HeaderProps) {
+export default function Nav() {
   const { user, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -52,13 +47,6 @@ export default function Nav({ panel, setPanel }: HeaderProps) {
     <header className="fixed top-0 inset-x-0 w-full h-14 backdrop-blur-md bg-white border-b border-red-200 flex items-center justify-between z-50 pl-6 pr-6 text-[#311B65]">
       {/* Left */}
       <div className="flex items-center gap-6">
-        <button
-          type="button"
-          className={`p-1.5 rounded hover:bg-gray-100 transition-all ${panel ? "rotate-180" : ""}`}
-          onClick={() => setPanel((prev) => !prev)}
-        >
-          <Logs size={20} className="" />
-        </button>
         <h1 className="text-2xl font-semibold ">Prime Media</h1>
 
         <div className="hidden sm:flex items-center px-3 py-1.5 bg-gray-50 border border-red-200 rounded-md hover:border-red-300 transition-all">

@@ -9,16 +9,16 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [panel, setPanel] = useState(true);
+  const [panel, setPanel] = useState(false);
 
   // refreshUser();
 
   return (
     <>
-      <Nav panel={panel} setPanel={setPanel} />
-      <Panel panel={panel} />
+      <Nav />
+      <Panel panel={panel} setPanel={setPanel} />
       <main
-        className={`mt-14 p-4 flex items-center justify-center ${
+        className={`mt-14 ml-16 p-4 flex items-center justify-center ${
           panel ? "ml-52" : ""
         } transition-all duration-300`}
       >
