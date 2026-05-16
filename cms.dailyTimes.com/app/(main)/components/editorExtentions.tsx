@@ -1,5 +1,87 @@
 import { Extension, Node, RawCommands, mergeAttributes } from "@tiptap/core";
 
+export const ArticleTitle = Node.create({
+  name: "articleTitle",
+
+  group: "block",
+
+  content: "text*",
+
+  defining: true,
+
+  parseHTML() {
+    return [{ tag: "h1[data-title]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "h1",
+      { ...HTMLAttributes, "data-title": "" },
+      [
+        mergeAttributes({
+          style: "font-size: 2.5rem;font-weight: 800;",
+        }),
+      ],
+    ];
+  },
+});
+
+export const ArticleDescription = Node.create({
+  name: "articleDescription",
+
+  group: "block",
+
+  content: "text*",
+
+  parseHTML() {
+    return [{ tag: "p[data-description]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "p",
+      { ...HTMLAttributes, "data-description": "" },
+      [
+        mergeAttributes({
+          style: "font-size: 1.2rem;color: #555;",
+        }),
+      ],
+    ];
+  },
+});
+
+export const HeadMedia = Node.create({
+  name: "headMedia",
+
+  group: "block",
+
+  atom: true,
+
+  addAttributes() {
+    return {
+      mediaId: {
+        default: null,
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "figure[data-head-media]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "figure",
+      { ...HTMLAttributes, "data-head-media": "" },
+      [
+        mergeAttributes({
+          style: "margin: 20px 0;",
+        }),
+      ],
+    ];
+  },
+});
+
 export const MediaBlock = Node.create({
   name: "mediaBlock",
 

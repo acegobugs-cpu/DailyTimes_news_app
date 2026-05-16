@@ -31,3 +31,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+h1[data-title] {
+  font-size: 2.5rem;
+  font-weight: 800;
+}
+
+p[data-description] {
+  font-size: 1.2rem;
+  color: #555;
+}
+
+figure[data-head-media] {
+  margin: 20px 0;
+}

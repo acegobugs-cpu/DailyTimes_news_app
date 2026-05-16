@@ -13,12 +13,6 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import {
-  Editor,
-  Extension,
-  Node as Nodde,
-  mergeAttributes,
-} from "@tiptap/core";
-import {
   Bold,
   Italic,
   Underline as UnderLineIcon,
@@ -38,7 +32,14 @@ import {
   UnderlineIcon,
 } from "lucide-react";
 import { apiClient } from "@/app/lib/api";
-import { MediaBlock, FontSize, Highlight } from "./editorExtentions";
+import {
+  MediaBlock,
+  FontSize,
+  Highlight,
+  ArticleTitle,
+  ArticleDescription,
+  HeadMedia,
+} from "./editorExtentions";
 
 interface EditorProps {
   onChange?: (content: any) => void;
@@ -99,6 +100,16 @@ export default function TextEditor({
     { value: "justify", label: "Justify", icon: TextAlignJustify },
   ];
 
+  const defaultDoc = {
+    type: "doc",
+    content: [
+      { type: "articleTitle" },
+      { type: "headMedia" },
+      { type: "articleDescription" },
+      { type: "paragraph" },
+    ],
+  };
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -115,6 +126,9 @@ export default function TextEditor({
 
   const editor = useEditor({
     extensions: [
+      ArticleTitle,
+      HeadMedia,
+      ArticleDescription,
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         bulletList: { HTMLAttributes: { class: "list-disc ml-5" } },
@@ -138,7 +152,7 @@ export default function TextEditor({
         openOnClick: false,
       }),
     ],
-    content: initialValue || "<p></p>",
+    content: defaultDoc,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange?.(editor.getJSON());
@@ -178,7 +192,7 @@ export default function TextEditor({
   };
 
   if (!editor) return null;
-
+  console.log(editor.getJSON());
   return (
     <>
       <div className="text-black">
