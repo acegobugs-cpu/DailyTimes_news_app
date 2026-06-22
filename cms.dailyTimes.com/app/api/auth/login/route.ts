@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Call your authentication service/API
     const authResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/login`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`,
       {
         method: "POST",
         headers: {
@@ -26,27 +26,20 @@ export async function POST(request: NextRequest) {
         }),
       }
     );
-    console.log("Auth API response status:", authResponse.status);
 
     if (!authResponse.ok) {
-      const errorText = await authResponse.text();
-      console.log("Auth API error:", errorText);
+      const error = await authResponse.json();
       return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
+        {message:   error.message    ||   "UKNOWN error"},
+        {status:    error.status     ||   500           }
       );
     }
 
     const authData = await authResponse.json();
-    console.log("Auth API success:", {
-      hasToken: !!authData.access_token,
-      hasRotate: !!authData.refresh_token,
-      hasUser: !!authData.user,
-    });
 
     // Set HttpOnly cookie
     const cookieStore = await cookies();
-    cookieStore.set("access_token", authData.access_token, {
+    cookieStore.set("access_token", authData.data.tokens.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -54,7 +47,7 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
 
-    cookieStore.set("refresh_token", authData.refresh_token, {
+    cookieStore.set("refresh_token", authData.data.tokens.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -62,7 +55,7 @@ export async function POST(request: NextRequest) {
       path: "/api/auth",
     });
 
-    return NextResponse.json({ user: authData.user });
+    return NextResponse.json({ user: authData.data.user });
   } catch (error) {
     console.error("Login API error:", error);
     return NextResponse.json(
