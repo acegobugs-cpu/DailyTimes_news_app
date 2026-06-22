@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Panel from "./components/panel";
 import Nav from "./components/nav";
 
@@ -9,21 +8,22 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [panel, setPanel] = useState(false);
 
   // refreshUser();
 
   return (
     <>
+    <div className="flex">
+      <Panel />
+      <div className="w-full relative">
       <Nav />
-      <Panel panel={panel} setPanel={setPanel} />
       <main
-        className={`mt-14 ml-16 flex items-center justify-center ${
-          panel ? "ml-68" : ""
-        } transition-all duration-300`}
+        className={`m-4 flex items-center justify-center transition-all duration-300`}
       >
         {children}
       </main>
+      </div>
+      </div>
     </>
   );
 }

@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
     const cookies = request.headers.get("cookie") || "";
 
     const backendResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/me`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/me`,
       {
         method: "GET",
         headers: {

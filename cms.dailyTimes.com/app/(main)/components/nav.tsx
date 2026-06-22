@@ -44,11 +44,9 @@ export default function Nav() {
   }, []);
 
   return (
-    <header className="fixed top-0 inset-x-0 w-full h-14 backdrop-blur-md bg-white border-b border-red-200 flex items-center justify-between z-50 pl-6 pr-6 text-[#311B65]">
+    <header className="absolute top-0 w-full h-14 backdrop-blur-md bg-white border-b border-red-200 flex items-center justify-between z-50 pl-6 pr-6 text-[#311B65]">
       {/* Left */}
       <div className="flex items-center gap-6">
-        <h1 className="text-2xl font-semibold ">Prime Media</h1>
-
         <div className="hidden sm:flex items-center px-3 py-1.5 bg-gray-50 border border-red-200 rounded-md hover:border-red-300 transition-all">
           <Search size={16} className="" />
           <input

@@ -10,7 +10,7 @@ export async function getServerSession() {
   try {
     // Verify token with backend
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/verify`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/verify`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

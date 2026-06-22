@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Forward the refresh token to your backend auth API
     const apiResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/refresh`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/refresh`,
       {
         method: "POST",
         headers: {

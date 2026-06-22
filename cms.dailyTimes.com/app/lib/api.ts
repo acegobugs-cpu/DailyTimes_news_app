@@ -68,7 +68,7 @@ class ApiClient {
     password: string,
   ): Promise<{ email_or_username: string; password: string }> {
     return this.request<{ email_or_username: string; password: string }>(
-      "/api/login",
+      "/api/v1/auth/login",
       {
         method: "POST",
         body: JSON.stringify({
@@ -80,7 +80,7 @@ class ApiClient {
   }
 
   async registerUser(slug: string, data: RegisterData): Promise<AuthResponse> {
-    return this.request<AuthResponse>(`/api/register/${slug}`, {
+    return this.request<AuthResponse>(`/api/v1/auth/register/${slug}`, {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -88,35 +88,35 @@ class ApiClient {
 
   // Email API
   async authorizeEmail(data: { email: string }) {
-    return this.request<Email>("/api/authorize-emails", {
+    return this.request<Email>("/api/v1/authorize-emails", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getEmails() {
-    return this.request<Email[]>("/api/getEmails");
+    return this.request<Email[]>("/api/v1/authorize-emails");
   }
 
   async deleteEmails(id: number) {
-    return this.request(`/api/delEmails/${id}`, {
+    return this.request(`/api/v1/authorize-emails/${id}`, {
       method: "DELETE",
     });
   }
 
   // Users API
   async getUsers() {
-    return this.request<User[]>("/api/users");
+    return this.request<User[]>("/api/v1/users");
   }
 
   async deleteUser(id: number) {
-    return this.request(`/api/users/${id}`, {
+    return this.request(`/api/v1/users/${id}`, {
       method: "DELETE",
     });
   }
 
   async updateUser(id: number, data: Partial<User>) {
-    return this.request<User>(`/api/users/${id}`, {
+    return this.request<User>(`/api/v1/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
@@ -124,105 +124,105 @@ class ApiClient {
 
   // Articles API
   async getArticles() {
-    return this.request<Article[]>("/api/articles");
+    return this.request<Article[]>("/api/v1/articles");
   }
 
   async getArticleById(id: string) {
-    return this.request<Article>(`/api/articles/${id}`);
+    return this.request<Article>(`/api/v1/articles/${id}`);
   }
 
   async getArticleBySlug(slug: string) {
-    return this.request<Article>(`/api/articles/slug/${slug}`);
+    return this.request<Article>(`/api/v1/articles/slug/${slug}`);
   }
 
   async createArticle(data: Partial<Article>) {
-    return this.request<Article>("/api/articles", {
+    return this.request<Article>("/api/v1/articles", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async updateArticle(article_id: number, data: Partial<ArticleUpdate>) {
-    return this.request<ArticleUpdate>(`/api/articles/${article_id}`, {
+    return this.request<ArticleUpdate>(`/api/v1/articles/${article_id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async deleteArticle(id: number) {
-    return this.request(`/api/articles/${id}`, {
+    return this.request(`/api/v1/articles/${id}`, {
       method: "DELETE",
     });
   }
 
   //Locale API
   async addLocale(data: Partial<ArticleTranslation>) {
-    return this.request<ArticleTranslation>("/api/locale", {
+    return this.request<ArticleTranslation>("/api/v1/locale", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async deleteLocale(id: number) {
-    return this.request(`/api/delete/locale/${id}`, {
+    return this.request(`/api/v1/delete/locale/${id}`, {
       method: "DELETE",
     });
   }
 
   // Categories API
   async getCategories() {
-    return this.request<Category[]>("/api/categories");
+    return this.request<Category[]>("/api/v1/categories");
   }
 
   async getCategoryById(id: string) {
-    return this.request<Category>(`/api/categories/${id}`);
+    return this.request<Category>(`/api/v1/categories/${id}`);
   }
 
   async getCategoryBySlug(slug: string) {
-    return this.request<Category>(`/api/categories/slug/${slug}`);
+    return this.request<Category>(`/api/v1/categories/slug/${slug}`);
   }
 
   async getArticlesByCategory(categoryId: string) {
-    return this.request<Article[]>(`/api/articles/category/${categoryId}`);
+    return this.request<Article[]>(`/api/v1/articles/category/${categoryId}`);
   }
 
   async getCategoriesByArticle(articleId: string) {
-    return this.request<Category[]>(`/api/categories/article/${articleId}`);
+    return this.request<Category[]>(`/api/v1/categories/article/${articleId}`);
   }
 
   async createCategory(data: Partial<Category>) {
-    return this.request<Category>("/api/categories", {
+    return this.request<Category>("/api/v1/categories", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async updateCategory(id: number, data: Partial<Category>) {
-    return this.request<Category>(`/api/categories/${id}`, {
+    return this.request<Category>(`/api/v1/categories/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteCategory(id: number) {
-    return this.request(`/api/categories/${id}`, {
+    return this.request(`/api/v1/categories/${id}`, {
       method: "DELETE",
     });
   }
 
   // Media API
   async getMedia() {
-    return this.request<{ files: string[] }>("/api/uploads");
+    return this.request<{ files: string[] }>("/api/v1/uploads");
   }
 
   async delMedia(filename: string) {
-    return this.request(`/api/upload/${filename}`, {
+    return this.request(`/api/v1/upload/${filename}`, {
       method: "DELETE",
     });
   }
 
   async uploadFile(formData: FormData) {
-    return this.request(`/api/upload`, {
+    return this.request(`/api/v1/upload`, {
       method: "POST",
       body: formData,
     });

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Call your authentication service/API
     const authResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login`,
       {
         method: "POST",
         headers: {
