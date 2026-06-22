@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"app/internal/domain/entities"
+	"app/internal/domain/handlers"
 	"app/internal/domain/repositories"
 	"app/internal/domain/services"
 	"app/internal/infra/database"
@@ -93,12 +94,12 @@ func main() {
 	mediaService := services.NewMediaService(mediaRepo, storageSvc, maxFileSize, publicURL)
 
 	// Initialize HTTP handlers
-	userHandler := httpInterface.NewUserHandler(userService)
-	authHandler := httpInterface.NewAuthHandler(authService)
-	articleHandler := httpInterface.NewArticleHandler(articleService)
-	categoryHandler := httpInterface.NewCategoryHandler(categoryService)
-	authEmailHandler := httpInterface.NewAuthorizedEmailHandler(authEmailService)
-	mediaHandler := httpInterface.NewMediaHandler(mediaService)
+	userHandler := handlers.NewUserHandler(userService)
+	authHandler := handlers.NewAuthHandler(authService)
+	articleHandler := handlers.NewArticleHandler(articleService)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
+	authEmailHandler := handlers.NewAuthorizedEmailHandler(authEmailService)
+	mediaHandler := handlers.NewMediaHandler(mediaService)
 
 	// Initialize HTTP router
 	router := httpInterface.NewRouter(

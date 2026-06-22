@@ -1,4 +1,4 @@
-package http
+package handlers
 
 import (
 	"encoding/json"
@@ -9,15 +9,10 @@ import (
 
 // Response represents a standard API response
 type Response struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   *ErrorInfo  `json:"error,omitempty"`
-}
-
-// ErrorInfo represents error information in response
-type ErrorInfo struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Success bool   `json:"success"`
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+	Data    any    `json:"data,omitempty"`
 }
 
 // Handler represents an HTTP handler
@@ -29,7 +24,7 @@ func NewHandler() *Handler {
 }
 
 // RespondJSON writes a JSON response
-func (h *Handler) RespondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
+func (h *Handler) RespondJSON(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
@@ -50,10 +45,8 @@ func (h *Handler) RespondError(w http.ResponseWriter, err error) {
 
 	response := Response{
 		Success: false,
-		Error: &ErrorInfo{
-			Code:    appErr.Code,
-			Message: appErr.Message,
-		},
+		Code:    appErr.Code,
+		Message: appErr.Message,
 	}
 
 	json.NewEncoder(w).Encode(response)

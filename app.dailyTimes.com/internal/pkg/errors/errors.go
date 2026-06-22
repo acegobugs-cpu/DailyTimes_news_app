@@ -46,14 +46,14 @@ func Wrap(err error, code int, message string, statusCode int) *AppError {
 
 // Common error constructors
 var (
-	ErrBadRequest       = New(400, "Bad request", http.StatusBadRequest)
-	ErrUnauthorized     = New(401, "Unauthorized", http.StatusUnauthorized)
-	ErrForbidden        = New(403, "Forbidden", http.StatusForbidden)
-	ErrNotFound         = New(404, "Resource not found", http.StatusNotFound)
-	ErrConflict         = New(409, "Resource conflict", http.StatusConflict)
+	ErrBadRequest          = New(400, "Bad request", http.StatusBadRequest)
+	ErrUnauthorized        = New(401, "Unauthorized", http.StatusUnauthorized)
+	ErrForbidden           = New(403, "Forbidden", http.StatusForbidden)
+	ErrNotFound            = New(404, "Resource not found", http.StatusNotFound)
+	ErrConflict            = New(409, "Resource conflict", http.StatusConflict)
 	ErrUnprocessableEntity = New(422, "Unprocessable entity", http.StatusUnprocessableEntity)
-	ErrInternalServer   = New(500, "Internal server error", http.StatusInternalServerError)
-	ErrServiceUnavailable = New(503, "Service unavailable", http.StatusServiceUnavailable)
+	ErrInternalServer      = New(500, "Internal server error", http.StatusInternalServerError)
+	ErrServiceUnavailable  = New(503, "Service unavailable", http.StatusServiceUnavailable)
 )
 
 // Domain-specific errors

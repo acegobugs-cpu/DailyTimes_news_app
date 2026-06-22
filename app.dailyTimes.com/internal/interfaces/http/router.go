@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 
+	"app/internal/domain/handlers"
 	"app/internal/pkg/config"
 	"app/internal/pkg/middleware"
 )
@@ -18,23 +19,23 @@ import (
 type Router struct {
 	router           *chi.Mux
 	config           *config.Config
-	userHandler      *UserHandler
-	authHandler      *AuthHandler
-	articleHandler   *ArticleHandler
-	categoryHandler  *CategoryHandler
-	authEmailHandler *AuthorizedEmailHandler
-	mediaHandler     *MediaHandler
+	userHandler      *handlers.UserHandler
+	authHandler      *handlers.AuthHandler
+	articleHandler   *handlers.ArticleHandler
+	categoryHandler  *handlers.CategoryHandler
+	authEmailHandler *handlers.AuthorizedEmailHandler
+	mediaHandler     *handlers.MediaHandler
 }
 
 // NewRouter creates a new HTTP router
 func NewRouter(
 	config *config.Config,
-	userHandler *UserHandler,
-	authHandler *AuthHandler,
-	articleHandler *ArticleHandler,
-	categoryHandler *CategoryHandler,
-	authEmailHandler *AuthorizedEmailHandler,
-	mediaHandler *MediaHandler,
+	userHandler *handlers.UserHandler,
+	authHandler *handlers.AuthHandler,
+	articleHandler *handlers.ArticleHandler,
+	categoryHandler *handlers.CategoryHandler,
+	authEmailHandler *handlers.AuthorizedEmailHandler,
+	mediaHandler *handlers.MediaHandler,
 ) *Router {
 	r := chi.NewRouter()
 

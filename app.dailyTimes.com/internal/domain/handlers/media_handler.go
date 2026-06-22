@@ -1,4 +1,4 @@
-package http
+package handlers
 
 import (
 	"app/internal/domain/services"
