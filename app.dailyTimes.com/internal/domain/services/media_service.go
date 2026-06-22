@@ -25,10 +25,18 @@ type MediaUploadReq struct {
 
 type MinioService interface {
 	UploadFile(ctx context.Context, content []byte, filename, contentType string) error
+	ListFiles(ctx context.Context) ([]string, error)
+	GetFile(ctx context.Context, filename string) (io.ReadCloser, string, error)
+	CheckFileExists(ctx context.Context, filename string) (bool, error)
+	DeleteFile(ctx context.Context, filename string) error
 }
 
 type MediaService interface {
 	Upload(ctx context.Context, fileReader io.Reader, filename, contentType string, req MediaUploadReq) (*entities.Media, error)
+	ListUploadedFiles(ctx context.Context) (*MediaListRes, error) // <-- New Method
+	Download(ctx context.Context, filename string) (io.ReadCloser, string, error)
+	Replace(ctx context.Context, filename string, fileReader io.Reader, contentType string) error
+	Delete(ctx context.Context, filename string) error
 }
 
 type mediaService struct {
@@ -51,7 +59,38 @@ func NewMediaService(repo *repositories.MediaRepository, minio MinioService, max
 var (
 	ErrFileTooLarge = fmt.Errorf("file size exceeds maximum allowed limit")
 	ErrStorageError = fmt.Errorf("failed to upload to storage")
+	ErrFileNotFound = fmt.Errorf("file not found")
 )
+
+type MediaListRes struct {
+	Files []string `json:"files"`
+}
+
+// Implement the new method on your mediaService struct
+func (s *mediaService) ListUploadedFiles(ctx context.Context) (*MediaListRes, error) {
+	// 1. Call S3 storage layer
+	keys, err := s.minio.ListFiles(ctx) // s.minio is your MinioService interface
+	if err != nil {
+		return nil, ErrStorageError
+	}
+
+	// 2. Build full URLs based on the base URL configuration
+	fileURLs := make([]string, len(keys))
+	for i, key := range keys {
+		if s.minioBaseURL != "" {
+			fileURLs[i] = s.minioBaseURL + "/" + key
+		} else {
+			fileURLs[i] = key
+		}
+	}
+
+	return &MediaListRes{Files: fileURLs}, nil
+}
+
+func (s *mediaService) Download(ctx context.Context, filename string) (io.ReadCloser, string, error) {
+	// Business layer wrapper. You could add database lookups or download logging here.
+	return s.minio.GetFile(ctx, filename)
+}
 
 func (s *mediaService) Upload(ctx context.Context, fileReader io.Reader, filename, contentType string, req MediaUploadReq) (*entities.Media, error) {
 	var totalSize int64
@@ -112,4 +151,53 @@ func (s *mediaService) Upload(ctx context.Context, fileReader io.Reader, filenam
 	}
 
 	return media, nil
+}
+
+func (s *mediaService) Replace(ctx context.Context, filename string, fileReader io.Reader, contentType string) error {
+	// 1. Enforce existence verification
+	exists, err := s.minio.CheckFileExists(ctx, filename)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrFileNotFound
+	}
+
+	// 2. Read in chunks & enforce max size constraint safely
+	var totalSize int64
+	chunkSize := 64 * 1024
+	buf := make([]byte, chunkSize)
+	var content bytes.Buffer
+
+	for {
+		n, err := fileReader.Read(buf)
+		if n > 0 {
+			totalSize += int64(n)
+			if totalSize > s.maxFileSize {
+				return ErrFileTooLarge
+			}
+			content.Write(buf[:n])
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	// 3. Overwrite file implicitly using the explicit original filename key
+	return s.minio.UploadFile(ctx, content.Bytes(), filename, contentType)
+}
+
+func (s *mediaService) Delete(ctx context.Context, filename string) error {
+	exists, err := s.minio.CheckFileExists(ctx, filename)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrFileNotFound
+	}
+
+	return s.minio.DeleteFile(ctx, filename)
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net"
 	"net/http"
 	"strings"
@@ -34,6 +35,14 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type UserResponse struct {
+	ID          int64  `json:"id"`
+	UID         string `json:"uid"`
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+	IsSuperUser bool   `json:"is_superuser"`
+}
+
 // Login handles user login
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -61,6 +70,44 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"user":   user,
 		"tokens": tokens,
 	})
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// 1. Extract Bearer Token from Authorization Header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		h.handler.RespondError(w, errors.ErrUnauthorized)
+		return
+	}
+
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+		h.handler.RespondError(w, errors.ErrUnauthorized)
+		return
+	}
+	accessToken := parts[1]
+
+	// 2. Execute Service Layer Logic
+	user, err := h.authService.Me(ctx, accessToken)
+	if err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
+
+	// 3. Construct and write the presentation response
+	resp := UserResponse{
+		ID:          user.ID,
+		UID:         user.UID,
+		Username:    user.Username,
+		Email:       user.Email,
+		IsSuperUser: user.IsSuperuser,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // RefreshToken handles refreshing an access token

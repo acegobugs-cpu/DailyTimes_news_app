@@ -23,7 +23,7 @@ type ServerConfig struct {
 	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
-	Environment      string        `mapstructure:"environment"`
+	Environment     string        `mapstructure:"environment"`
 }
 
 type DatabaseConfig struct {
@@ -134,5 +134,5 @@ func setDefaults() {
 	viper.SetDefault("cors.allowed_origins", []string{"*"})
 	viper.SetDefault("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("cors.allowed_headers", []string{"*"})
-	viper.SetDefault("cors.allow_credentials", true)
+	viper.SetDefault("cors.allow_credentials", false)
 }

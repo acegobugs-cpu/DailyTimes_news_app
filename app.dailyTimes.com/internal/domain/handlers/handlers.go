@@ -54,6 +54,7 @@ func (h *Handler) RespondError(w http.ResponseWriter, err error) {
 
 // ParseJSON parses JSON request body
 func (h *Handler) ParseJSON(r *http.Request, v interface{}) error {
+	r.Body = http.MaxBytesReader(nil, r.Body, 10<<20) // 10 MB limit
 	return json.NewDecoder(r.Body).Decode(v)
 }
 

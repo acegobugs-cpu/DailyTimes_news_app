@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (!authResponse.ok) {
       const error = await authResponse.json();
       return NextResponse.json(
-        {message:   error.message    ||   "UKNOWN error"},
+        {message:   error.message    ||   "UnKnown error"},
         {status:    error.status     ||   500           }
       );
     }

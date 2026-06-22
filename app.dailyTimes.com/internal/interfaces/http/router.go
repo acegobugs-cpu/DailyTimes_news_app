@@ -66,12 +66,6 @@ func (r *Router) setupMiddleware() {
 	r.router.Use(middleware.Timeout(r.config.Server.ReadTimeout))
 	r.router.Use(middleware.ContentType)
 
-	// Custom middleware
-	r.router.Use(middleware.RequestID)
-	r.router.Use(middleware.Logger)
-	r.router.Use(middleware.Recoverer)
-	r.router.Use(middleware.ContentType)
-
 	// CORS
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   r.config.CORS.AllowedOrigins,
@@ -84,14 +78,6 @@ func (r *Router) setupMiddleware() {
 
 	// Rate limiting
 	r.router.Use(httprate.LimitByIP(100, 1*time.Minute))
-
-	// Path-specific rate limits
-	r.router.With(httprate.LimitByIP(10, 1*time.Minute)).Route("/api/login", func(r chi.Router) {
-		// Login endpoint has stricter rate limit
-	})
-	r.router.With(httprate.LimitByIP(5, 1*time.Minute)).Route("/api/register", func(r chi.Router) {
-		// Register endpoint has stricter rate limit
-	})
 }
 
 // setupRoutes sets up application routes
@@ -158,9 +144,9 @@ func (r *Router) setupRoutes() {
 
 		router.Route("/uploads", func(router chi.Router) {
 			router.Post("/", r.mediaHandler.UploadFile)
-			// router.Get("/")
+			router.Get("/", r.mediaHandler.ListUploadedFiles)
 			// router.Put("/:id")
-			// router.Get("/:filename")
+			router.Get("/{filename}", r.mediaHandler.GetFile)
 			// router.Delete("/:id")
 		})
 	})

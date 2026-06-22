@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"log"
 	"net/http"
 	"time"
 
@@ -83,46 +82,21 @@ func (s *AuthService) Login(ctx context.Context, emailOrUsername, password, ipAd
 	return user, tokens, nil
 }
 
-// GenerateTokenPair generates access and refresh tokens
-func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User, ipAddress, userAgent string) (*TokenPair, error) {
-	// Generate access token
-	accessClaims := &Claims{
-		UserID:   user.ID,
-		UID:      user.UID,
-		Username: user.Username,
-		Email:    user.Email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessDuration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    s.issuer,
-		},
-	}
-
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	accessTokenString, err := accessToken.SignedString([]byte(s.jwtSecret))
+func (s *AuthService) Me(ctx context.Context, accessToken string) (*entities.User, error) {
+	// 1. Validate the string token and extract claims
+	claims, err := s.ValidateAccessToken(accessToken)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to sign access token", http.StatusInternalServerError)
+		// Mapping invalid/expired JWTs cleanly to unauthorized
+		return nil, errors.ErrInvalidToken
 	}
 
-	// Generate refresh token
-	refreshTokenString := generateRandomToken()
-	refreshTokenHash := hashToken(refreshTokenString)
-	expiresAt := time.Now().Add(s.refreshDuration)
-
-	refreshToken := entities.NewRefreshToken(user.ID, refreshTokenHash, expiresAt)
-	refreshToken.IPAddress = &ipAddress
-	refreshToken.UserAgent = &userAgent
-
-	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
-		log.Fatal(err)
-		return nil, errors.Wrap(err, 0, "Failed to create refresh token", http.StatusInternalServerError)
+	// 2. Fetch the latest user profile state from the database
+	user, err := s.userRepo.FindByID(ctx, claims.UserID)
+	if err != nil {
+		return nil, errors.ErrResourceNotFound
 	}
 
-	return &TokenPair{
-		AccessToken:  accessTokenString,
-		RefreshToken: refreshTokenString,
-		ExpiresIn:    int64(s.accessDuration.Seconds()),
-	}, nil
+	return user, nil
 }
 
 // RefreshAccessToken refreshes an access token using a refresh token
@@ -222,6 +196,47 @@ func (s *AuthService) LogoutAll(ctx context.Context, userID int64) error {
 		return errors.Wrap(err, 0, "Failed to revoke all refresh tokens", http.StatusInternalServerError)
 	}
 	return nil
+}
+
+// GenerateTokenPair generates access and refresh tokens
+func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User, ipAddress, userAgent string) (*TokenPair, error) {
+	// Generate access token
+	accessClaims := &Claims{
+		UserID:   user.ID,
+		UID:      user.UID,
+		Username: user.Username,
+		Email:    user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessDuration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    s.issuer,
+		},
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessTokenString, err := accessToken.SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return nil, errors.Wrap(err, 0, "Failed to sign access token", http.StatusInternalServerError)
+	}
+
+	// Generate refresh token
+	refreshTokenString := generateRandomToken()
+	refreshTokenHash := hashToken(refreshTokenString)
+	expiresAt := time.Now().Add(s.refreshDuration)
+
+	refreshToken := entities.NewRefreshToken(user.ID, refreshTokenHash, expiresAt)
+	refreshToken.IPAddress = &ipAddress
+	refreshToken.UserAgent = &userAgent
+
+	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
+		return nil, errors.Wrap(err, 0, "Failed to create refresh token", http.StatusInternalServerError)
+	}
+
+	return &TokenPair{
+		AccessToken:  accessTokenString,
+		RefreshToken: refreshTokenString,
+		ExpiresIn:    int64(s.accessDuration.Seconds()),
+	}, nil
 }
 
 func generateRandomToken() string {
