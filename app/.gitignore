@@ -6,6 +6,7 @@
 *.dylib
 /server
 /app
+/tmp
 
 # Test binary, built with `go test -c`
 *.test

@@ -90,7 +90,7 @@ func (r *Router) setupRoutes() {
 		router.With(httprate.LimitByIP(10, 1*time.Minute)).Route("/auth", func(router chi.Router) {
 			router.Post("/register", r.userHandler.Register)
 			router.Post("/login", r.authHandler.Login)
-			router.Post("/me", r.authHandler.Me)
+			router.Get("/me", r.authHandler.Me)
 			router.Post("/refresh", r.authHandler.RefreshToken)
 			router.Post("/logout", r.authHandler.Logout)
 			router.Post("/logout-all", r.authHandler.LogoutAll)
