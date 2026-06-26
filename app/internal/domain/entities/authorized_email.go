@@ -8,12 +8,12 @@ import (
 
 // AuthorizedEmail represents an authorized email entity
 type AuthorizedEmail struct {
-	ID        int64     `json:"id"`
-	Slug      string    `json:"slug"`
-	Email     string    `json:"email"`
-	Used      bool      `json:"used"`
-	CreatedAt time.Time `json:"created_at"`
-	InviterID *int64    `json:"inviter_id,omitempty"`
+	ID        int64      `json:"id"`
+	Slug      string     `json:"slug"`
+	Email     string     `json:"email"`
+	Used      bool       `json:"used"`
+	CreatedAt time.Time  `json:"created_at"`
+	InviterID *uuid.UUID `json:"inviter_id,omitempty"`
 }
 
 // NewAuthorizedEmail creates a new authorized email entity

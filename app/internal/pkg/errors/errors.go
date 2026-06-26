@@ -1,47 +1,65 @@
 package errors
 
 import (
-	"encoding/json"
-	"fmt"
+	"app/internal/pkg/logger"
+	"context"
 	"net/http"
 )
 
 // AppError represents a custom application error with HTTP status code
 type AppError struct {
-	Code       int    `json:"code"`
-	Message    string `json:"message"`
-	StatusCode int    `json:"-"`
-	Internal   error  `json:"-"` // Internal error for logging, not exposed to client
+	Success    bool   `json:"success"`
+	StatusCode int    `json:"statusCode,omitempty"` // This holds your App Code (e.g., 1001, 400)
+	Message    string `json:"message,omitempty"`
+	Details    string `json:"details,omitempty"`
+	Data       any    `json:"data,omitempty"`
+	HTTPStatus int    `json:"-"` // Internal network status code (e.g., 401, 500)
 }
 
 func (e *AppError) Error() string {
-	if e.Internal != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Internal)
+	if e.Details != "" {
+		return e.Message + ": " + e.Details
 	}
 	return e.Message
 }
 
-func (e *AppError) Unwrap() error {
-	return e.Internal
-}
+// New matches your global variables perfectly (3 arguments)
+func New(code int, message string, httpStatus int) *AppError {
+	// If it's a custom domain error code (greater than 599), default network status to 500
+	networkStatus := httpStatus
+	if code > 599 && httpStatus == 0 {
+		networkStatus = http.StatusInternalServerError
+	}
 
-// New creates a new AppError
-func New(code int, message string, statusCode int) *AppError {
 	return &AppError{
-		Code:       code,
+		Success:    false,
+		StatusCode: code,
 		Message:    message,
-		StatusCode: statusCode,
+		HTTPStatus: networkStatus,
 	}
 }
 
-// Wrap wraps an existing error with additional context
-func Wrap(err error, code int, message string, statusCode int) *AppError {
-	return &AppError{
-		Code:       code,
-		Message:    message,
-		StatusCode: statusCode,
-		Internal:   err,
+func (e *AppError) W(msg string, details string) *AppError {
+	finalMsg := e.Message
+	if msg != "" {
+		finalMsg = msg
 	}
+	return &AppError{
+		Success:    e.Success,
+		StatusCode: e.StatusCode,
+		Message:    finalMsg,
+		Details:    details,
+		HTTPStatus: e.HTTPStatus,
+	}
+}
+
+// Log logs the error contextually and immediately halts the request cycle
+func (e *AppError) Log(ctx context.Context) {
+	// 1. Fire your existing logger
+	logger.LogError(ctx, nil, e.Error())
+
+	// 2. Short-circuit the request cycle instantly!
+	panic(e)
 }
 
 // Common error constructors
@@ -67,35 +85,9 @@ var (
 	ErrResourceNotFound   = New(1007, "Resource not found", http.StatusNotFound)
 )
 
-// ErrorResponse represents the error response structure
-type ErrorResponse struct {
-	Error ErrorDetail `json:"error"`
-}
-
-type ErrorDetail struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Details string `json:"details,omitempty"`
-}
-
-// ToJSON converts AppError to JSON response
-func (e *AppError) ToJSON() []byte {
-	resp := ErrorResponse{
-		Error: ErrorDetail{
-			Code:    e.Code,
-			Message: e.Message,
-		},
-	}
-	if e.Internal != nil {
-		resp.Error.Details = e.Internal.Error()
-	}
-	data, _ := json.Marshal(resp)
-	return data
-}
-
-// GetStatusCode returns the HTTP status code for the error
+// GetStatusCode returns the HTTP network status code for the error
 func (e *AppError) GetStatusCode() int {
-	return e.StatusCode
+	return e.HTTPStatus
 }
 
 // IsAppError checks if an error is an AppError
@@ -104,10 +96,10 @@ func IsAppError(err error) bool {
 	return ok
 }
 
-// FromAppError extracts AppError from error, or converts generic error
+// FromAppError extracts AppError from error, or converts a generic error to a 500
 func FromAppError(err error) *AppError {
 	if appErr, ok := err.(*AppError); ok {
 		return appErr
 	}
-	return Wrap(err, 500, "Internal server error", http.StatusInternalServerError)
+	return ErrInternalServer
 }

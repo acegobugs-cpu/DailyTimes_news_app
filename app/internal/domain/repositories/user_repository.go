@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"app/internal/domain/entities"
@@ -23,20 +24,17 @@ func NewUserRepository(db *database.Postgres) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {
 	query := `
-		INSERT INTO users (uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO users (fname, lname, uname, email, phone,  h_password)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`
 	err := r.db.QueryRow(ctx, query,
-		user.UID,
 		user.FirstName,
-		user.MiddleName,
 		user.LastName,
 		user.Username,
 		user.Email,
+		user.Phone,
 		user.PasswordHash,
-		user.IsSuperuser,
-		user.CreatedAt,
 	).Scan(&user.ID)
 
 	if err != nil {
@@ -45,7 +43,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 	return nil
 }
 
-func (r *UserRepository) FindByID(ctx context.Context, id int64) (*entities.User, error) {
+func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
 	query := `
 		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
 		FROM users WHERE id = $1
@@ -53,14 +51,11 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*entities.User
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&user.ID,
-		&user.UID,
 		&user.FirstName,
-		&user.MiddleName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
-		&user.IsSuperuser,
 		&user.CreatedAt,
 	)
 
@@ -81,14 +76,11 @@ func (r *UserRepository) FindByUID(ctx context.Context, uid string) (*entities.U
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, uid).Scan(
 		&user.ID,
-		&user.UID,
 		&user.FirstName,
-		&user.MiddleName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
-		&user.IsSuperuser,
 		&user.CreatedAt,
 	)
 
@@ -109,14 +101,12 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entiti
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
-		&user.UID,
+
 		&user.FirstName,
-		&user.MiddleName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
-		&user.IsSuperuser,
 		&user.CreatedAt,
 	)
 
@@ -137,14 +127,12 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, username).Scan(
 		&user.ID,
-		&user.UID,
+
 		&user.FirstName,
-		&user.MiddleName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
-		&user.IsSuperuser,
 		&user.CreatedAt,
 	)
 
@@ -165,14 +153,12 @@ func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, emailOrUsern
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, emailOrUsername).Scan(
 		&user.ID,
-		&user.UID,
+
 		&user.FirstName,
-		&user.MiddleName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
-		&user.IsSuperuser,
 		&user.CreatedAt,
 	)
 
@@ -194,12 +180,10 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 	err := r.db.Exec(ctx, query,
 		user.ID,
 		user.FirstName,
-		user.MiddleName,
 		user.LastName,
 		user.Username,
 		user.Email,
 		user.PasswordHash,
-		user.IsSuperuser,
 	)
 
 	if err != nil {
@@ -208,7 +192,7 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 	return nil
 }
 
-func (r *UserRepository) Delete(ctx context.Context, id int64) error {
+func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM users WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {
@@ -233,14 +217,12 @@ func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]*entiti
 		user := &entities.User{}
 		err := rows.Scan(
 			&user.ID,
-			&user.UID,
+
 			&user.FirstName,
-			&user.MiddleName,
 			&user.LastName,
 			&user.Username,
 			&user.Email,
 			&user.PasswordHash,
-			&user.IsSuperuser,
 			&user.CreatedAt,
 		)
 		if err != nil {

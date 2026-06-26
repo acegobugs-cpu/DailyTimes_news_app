@@ -36,7 +36,7 @@ services:
       - ./.env
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - ./.docker/pg-init:/docker-entrypoint-initdb.d
     networks:
       - dailytimes-network
     restart: unless-stopped

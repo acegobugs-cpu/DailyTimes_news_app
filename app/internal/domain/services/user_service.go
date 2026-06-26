@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
-	"net/http"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"app/internal/domain/entities"
@@ -23,43 +23,8 @@ func NewUserService(userRepo *repositories.UserRepository) *UserService {
 	}
 }
 
-// Register registers a new user
-func (s *UserService) Register(ctx context.Context, firstName, lastName, username, email, password string) (*entities.User, error) {
-	// Check if email already exists
-	exists, err := s.userRepo.ExistsByEmail(ctx, email)
-	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to check email existence", http.StatusInternalServerError)
-	}
-	if exists {
-		return nil, errors.ErrUserExists
-	}
-
-	// Check if username already exists
-	exists, err = s.userRepo.ExistsByUsername(ctx, username)
-	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to check username existence", http.StatusInternalServerError)
-	}
-	if exists {
-		return nil, errors.ErrUserExists
-	}
-
-	// Hash password
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to hash password", http.StatusInternalServerError)
-	}
-
-	// Create user
-	user := entities.NewUser(firstName, lastName, username, email, string(passwordHash))
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to create user", http.StatusInternalServerError)
-	}
-
-	return user, nil
-}
-
 // GetUserByID retrieves a user by ID
-func (s *UserService) GetUserByID(ctx context.Context, id int64) (*entities.User, error) {
+func (s *UserService) GetUserByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
 	user, err := s.userRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errors.ErrResourceNotFound
@@ -79,15 +44,15 @@ func (s *UserService) GetUserByUID(ctx context.Context, uid string) (*entities.U
 // UpdateUser updates a user
 func (s *UserService) UpdateUser(ctx context.Context, user *entities.User) error {
 	if err := s.userRepo.Update(ctx, user); err != nil {
-		return errors.Wrap(err, 0, "Failed to update user", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to update user", "")
 	}
 	return nil
 }
 
 // DeleteUser deletes a user
-func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
+func (s *UserService) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	if err := s.userRepo.Delete(ctx, id); err != nil {
-		return errors.Wrap(err, 0, "Failed to delete user", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to delete user", "")
 	}
 	return nil
 }
@@ -96,13 +61,13 @@ func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
 func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]*entities.User, error) {
 	users, err := s.userRepo.List(ctx, limit, offset)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to list users", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to list users", "")
 	}
 	return users, nil
 }
 
 // ChangePassword changes a user's password
-func (s *UserService) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
+func (s *UserService) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return errors.ErrResourceNotFound
@@ -116,12 +81,12 @@ func (s *UserService) ChangePassword(ctx context.Context, userID int64, oldPassw
 	// Hash new password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return errors.Wrap(err, 0, "Failed to hash password", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to hash password", "")
 	}
 
 	user.PasswordHash = string(passwordHash)
 	if err := s.userRepo.Update(ctx, user); err != nil {
-		return errors.Wrap(err, 0, "Failed to update password", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to update password", "")
 	}
 
 	return nil

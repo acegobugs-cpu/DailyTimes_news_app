@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
@@ -181,14 +180,11 @@ func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository) e
 
 	// Create superadmin user
 	superadmin := &entities.User{
-		UID:          uuid.New().String(),
 		FirstName:    "Super",
-		MiddleName:   nil,
 		LastName:     "Admin",
 		Username:     "root",
 		Email:        "admin@news.com",
 		PasswordHash: string(passwordHash),
-		IsSuperuser:  true,
 	}
 
 	if err := userRepo.Create(ctx, superadmin); err != nil {

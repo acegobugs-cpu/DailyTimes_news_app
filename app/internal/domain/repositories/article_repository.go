@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"app/internal/domain/entities"
@@ -218,7 +219,7 @@ func (r *ArticleRepository) Update(ctx context.Context, article *entities.Articl
 	return nil
 }
 
-func (r *ArticleRepository) Delete(ctx context.Context, id int64) error {
+func (r *ArticleRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM articles WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {
@@ -291,7 +292,7 @@ func (r *ArticleRepository) Search(ctx context.Context, query string, limit, off
 	return articles, nil
 }
 
-func (r *ArticleRepository) AddCategory(ctx context.Context, articleID, categoryID int64) error {
+func (r *ArticleRepository) AddCategory(ctx context.Context, articleID uuid.UUID, categoryID int64) error {
 	query := `
 		INSERT INTO article_category (article_id, category_id)
 		VALUES ($1, $2)
@@ -367,7 +368,7 @@ func (r *ArticleRepository) DeleteLocale(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *ArticleRepository) FindLocalesByArticleID(ctx context.Context, articleID int64) ([]*entities.ArticleLocale, error) {
+func (r *ArticleRepository) FindLocalesByArticleID(ctx context.Context, articleID uuid.UUID) ([]*entities.ArticleLocale, error) {
 	query := `
 		SELECT id, article_id, editor_id, locale, title, slug, description, content, published_at, updated_at
 		FROM article_locale WHERE article_id = $1

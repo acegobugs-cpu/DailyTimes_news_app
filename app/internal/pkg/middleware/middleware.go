@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -49,7 +50,7 @@ func Recoverer(next http.Handler) http.Handler {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write(errors.ErrInternalServer.ToJSON())
+				json.NewEncoder(w).Encode(errors.ErrInternalServer)
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -59,7 +60,8 @@ func Recoverer(next http.Handler) http.Handler {
 // Timeout adds a timeout to requests
 func Timeout(timeout time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.TimeoutHandler(next, timeout, string(errors.ErrServiceUnavailable.ToJSON()))
+		body, _ := json.Marshal(errors.ErrServiceUnavailable)
+		return http.TimeoutHandler(next, timeout, string(body))
 	}
 }
 

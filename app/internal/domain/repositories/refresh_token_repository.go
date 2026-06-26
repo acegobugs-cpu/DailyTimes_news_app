@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"app/internal/domain/entities"
@@ -29,7 +30,7 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token *entities.Ref
 		RETURNING id
 	`
 	err := r.db.QueryRow(ctx, query,
-		token.UserID,
+		token.ID,
 		token.TokenHash,
 		token.CreatedAt,
 		token.ExpiresAt,
@@ -52,7 +53,6 @@ func (r *RefreshTokenRepository) FindByID(ctx context.Context, id int64) (*entit
 	token := &entities.RefreshToken{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&token.ID,
-		&token.UserID,
 		&token.TokenHash,
 		&token.CreatedAt,
 		&token.ExpiresAt,
@@ -79,7 +79,6 @@ func (r *RefreshTokenRepository) FindByTokenHash(ctx context.Context, tokenHash 
 	token := &entities.RefreshToken{}
 	err := r.db.QueryRow(ctx, query, tokenHash).Scan(
 		&token.ID,
-		&token.UserID,
 		&token.TokenHash,
 		&token.CreatedAt,
 		&token.ExpiresAt,
@@ -114,7 +113,6 @@ func (r *RefreshTokenRepository) FindByUserID(ctx context.Context, userID int64)
 		token := &entities.RefreshToken{}
 		err := rows.Scan(
 			&token.ID,
-			&token.UserID,
 			&token.TokenHash,
 			&token.CreatedAt,
 			&token.ExpiresAt,
@@ -155,7 +153,7 @@ func (r *RefreshTokenRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *RefreshTokenRepository) Revoke(ctx context.Context, id int64) error {
+func (r *RefreshTokenRepository) Revoke(ctx context.Context, id uuid.UUID) error {
 	query := `UPDATE refresh_tokens SET revoked = true WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {
@@ -164,7 +162,7 @@ func (r *RefreshTokenRepository) Revoke(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *RefreshTokenRepository) RevokeAllForUser(ctx context.Context, userID int64) error {
+func (r *RefreshTokenRepository) RevokeAllForUser(ctx context.Context, userID uuid.UUID) error {
 	query := `UPDATE refresh_tokens SET revoked = true WHERE user_id = $1`
 	err := r.db.Exec(ctx, query, userID)
 	if err != nil {
@@ -182,7 +180,7 @@ func (r *RefreshTokenRepository) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func (r *RefreshTokenRepository) Rotate(ctx context.Context, oldTokenID int64, newToken *entities.RefreshToken) error {
+func (r *RefreshTokenRepository) Rotate(ctx context.Context, oldTokenID uuid.UUID, newToken *entities.RefreshToken) error {
 	tx, err := r.db.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -202,7 +200,7 @@ func (r *RefreshTokenRepository) Rotate(ctx context.Context, oldTokenID int64, n
 		RETURNING id
 	`
 	err = tx.QueryRow(ctx, query,
-		newToken.UserID,
+		newToken.ID,
 		newToken.TokenHash,
 		newToken.CreatedAt,
 		newToken.ExpiresAt,

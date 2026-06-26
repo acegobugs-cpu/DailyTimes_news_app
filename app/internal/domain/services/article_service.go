@@ -2,11 +2,12 @@ package services
 
 import (
 	"context"
-	"net/http"
 
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
 // ArticleService handles article business logic
@@ -35,13 +36,13 @@ func (s *ArticleService) CreateArticle(ctx context.Context, article *entities.Ar
 
 	// Create article
 	if err := s.articleRepo.Create(ctx, article); err != nil {
-		return errors.Wrap(err, 0, "Failed to create article", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to create article", "")
 	}
 
 	// Add categories
 	for _, catID := range categoryIDs {
 		if err := s.articleRepo.AddCategory(ctx, article.ID, catID); err != nil {
-			return errors.Wrap(err, 0, "Failed to add category to article", http.StatusInternalServerError)
+			return errors.ErrInternalServer.W("Failed to add category to article", "")
 		}
 	}
 
@@ -69,7 +70,7 @@ func (s *ArticleService) GetArticleBySlug(ctx context.Context, slug, locale stri
 // UpdateArticle updates an article
 func (s *ArticleService) UpdateArticle(ctx context.Context, article *entities.Article, categoryIDs *[]int64) error {
 	if err := s.articleRepo.Update(ctx, article); err != nil {
-		return errors.Wrap(err, 0, "Failed to update article", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to update article", "")
 	}
 
 	// Update categories if provided
@@ -79,7 +80,7 @@ func (s *ArticleService) UpdateArticle(ctx context.Context, article *entities.Ar
 		ids := *categoryIDs
 		for _, catID := range ids {
 			if err := s.articleRepo.AddCategory(ctx, article.ID, catID); err != nil {
-				return errors.Wrap(err, 0, "Failed to add category to article", http.StatusInternalServerError)
+				return errors.ErrInternalServer.W("Failed to add category to article", "")
 			}
 		}
 	}
@@ -88,9 +89,9 @@ func (s *ArticleService) UpdateArticle(ctx context.Context, article *entities.Ar
 }
 
 // DeleteArticle deletes an article
-func (s *ArticleService) DeleteArticle(ctx context.Context, id int64) error {
+func (s *ArticleService) DeleteArticle(ctx context.Context, id uuid.UUID) error {
 	if err := s.articleRepo.Delete(ctx, id); err != nil {
-		return errors.Wrap(err, 0, "Failed to delete article", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to delete article", "")
 	}
 	return nil
 }
@@ -99,7 +100,7 @@ func (s *ArticleService) DeleteArticle(ctx context.Context, id int64) error {
 func (s *ArticleService) ListArticles(ctx context.Context, limit, offset int) ([]*entities.Article, error) {
 	articles, err := s.articleRepo.List(ctx, limit, offset)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to list articles", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to list articles", "")
 	}
 	return articles, nil
 }
@@ -108,7 +109,7 @@ func (s *ArticleService) ListArticles(ctx context.Context, limit, offset int) ([
 func (s *ArticleService) SearchArticles(ctx context.Context, query string, limit, offset int) ([]*entities.Article, error) {
 	articles, err := s.articleRepo.Search(ctx, query, limit, offset)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to search articles", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to search articles", "")
 	}
 	return articles, nil
 }
@@ -122,7 +123,7 @@ func (s *ArticleService) GetArticlesByCategory(ctx context.Context, categoryID i
 
 	articles, err := s.articleRepo.FindByCategory(ctx, categoryID)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to get articles by category", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to get articles by category", "")
 	}
 	return articles, nil
 }
@@ -130,7 +131,7 @@ func (s *ArticleService) GetArticlesByCategory(ctx context.Context, categoryID i
 // CreateArticleLocale creates a new article locale
 func (s *ArticleService) CreateArticleLocale(ctx context.Context, locale *entities.ArticleLocale) error {
 	if err := s.articleRepo.CreateLocale(ctx, locale); err != nil {
-		return errors.Wrap(err, 0, "Failed to create article locale", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to create article locale", "")
 	}
 	return nil
 }
@@ -138,7 +139,7 @@ func (s *ArticleService) CreateArticleLocale(ctx context.Context, locale *entiti
 // UpdateArticleLocale updates an article locale
 func (s *ArticleService) UpdateArticleLocale(ctx context.Context, locale *entities.ArticleLocale) error {
 	if err := s.articleRepo.UpdateLocale(ctx, locale); err != nil {
-		return errors.Wrap(err, 0, "Failed to update article locale", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to update article locale", "")
 	}
 	return nil
 }
@@ -146,7 +147,7 @@ func (s *ArticleService) UpdateArticleLocale(ctx context.Context, locale *entiti
 // DeleteArticleLocale deletes an article locale
 func (s *ArticleService) DeleteArticleLocale(ctx context.Context, id int64) error {
 	if err := s.articleRepo.DeleteLocale(ctx, id); err != nil {
-		return errors.Wrap(err, 0, "Failed to delete article locale", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to delete article locale", "")
 	}
 	return nil
 }

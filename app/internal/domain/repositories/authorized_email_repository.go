@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"app/internal/domain/entities"
@@ -114,7 +115,7 @@ func (r *AuthorizedEmailRepository) Update(ctx context.Context, email *entities.
 	return nil
 }
 
-func (r *AuthorizedEmailRepository) Delete(ctx context.Context, id int64) error {
+func (r *AuthorizedEmailRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM authorized_emails WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {

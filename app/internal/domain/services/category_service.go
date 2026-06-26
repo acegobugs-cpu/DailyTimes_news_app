@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"net/http"
 
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
@@ -26,7 +25,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, name, slug string)
 	// Check if slug already exists
 	exists, err := s.categoryRepo.ExistsBySlug(ctx, slug)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to check slug existence", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to check slug existence", "")
 	}
 	if exists {
 		return nil, errors.ErrConflict
@@ -35,7 +34,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, name, slug string)
 	// Check if name already exists
 	exists, err = s.categoryRepo.ExistsByName(ctx, name)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to check name existence", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to check name existence", "")
 	}
 	if exists {
 		return nil, errors.ErrConflict
@@ -43,7 +42,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, name, slug string)
 
 	category := entities.NewCategory(name, slug)
 	if err := s.categoryRepo.Create(ctx, category); err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to create category", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to create category", "")
 	}
 
 	return category, nil
@@ -70,7 +69,7 @@ func (s *CategoryService) GetCategoryBySlug(ctx context.Context, slug string) (*
 // UpdateCategory updates a category
 func (s *CategoryService) UpdateCategory(ctx context.Context, category *entities.Category) error {
 	if err := s.categoryRepo.Update(ctx, category); err != nil {
-		return errors.Wrap(err, 0, "Failed to update category", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to update category", "")
 	}
 	return nil
 }
@@ -78,7 +77,7 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, category *entities
 // DeleteCategory deletes a category
 func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 	if err := s.categoryRepo.Delete(ctx, id); err != nil {
-		return errors.Wrap(err, 0, "Failed to delete category", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to delete category", "")
 	}
 	return nil
 }
@@ -87,7 +86,7 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 func (s *CategoryService) ListCategories(ctx context.Context) ([]*entities.Category, error) {
 	categories, err := s.categoryRepo.List(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to list categories", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to list categories", "")
 	}
 	return categories, nil
 }

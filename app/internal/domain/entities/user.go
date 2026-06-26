@@ -8,29 +8,26 @@ import (
 
 // User represents a user entity
 type User struct {
-	ID          int64     `json:"id"`
-	UID         string    `json:"uid"`
-	FirstName   string    `json:"fname"`
-	MiddleName  *string   `json:"mname,omitempty"`
-	LastName    string    `json:"lname"`
-	Username    string    `json:"uname"`
-	Email       string    `json:"email"`
-	PasswordHash string   `json:"-"` // Never exposed in JSON
-	IsSuperuser bool      `json:"is_superuser"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           uuid.UUID `json:"id"`
+	FirstName    string    `json:"fname"`
+	LastName     string    `json:"lname"`
+	Username     string    `json:"uname"`
+	Email        string    `json:"email"`
+	Phone        string    `json:"phone"`
+	PasswordHash string    `json:"-"` // Never exposed in JSON
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // NewUser creates a new user entity
-func NewUser(firstName, lastName, username, email, passwordHash string) *User {
+func NewUser(firstName, lastName, username, email, phone, passwordHash string) *User {
 	return &User{
-		UID:         uuid.New().String(),
-		FirstName:   firstName,
-		LastName:    lastName,
-		Username:    username,
-		Email:       email,
+		FirstName:    firstName,
+		LastName:     lastName,
+		Username:     username,
+		Email:        email,
+		Phone:        phone,
 		PasswordHash: passwordHash,
-		IsSuperuser: false,
-		CreatedAt:   time.Now(),
+		CreatedAt:    time.Now(),
 	}
 }
 

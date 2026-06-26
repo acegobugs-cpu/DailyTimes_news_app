@@ -8,6 +8,8 @@ import (
 
 	"app/internal/domain/services"
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
 // AuthHandler handles authentication HTTP requests
@@ -24,6 +26,16 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 	}
 }
 
+// RegisterRequest represents a user registration request
+type RegisterRequest struct {
+	FirstName string `json:"fname"`
+	LastName  string `json:"lname"`
+	Username  string `json:"uname"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	Password  string `json:"password"`
+}
+
 // LoginRequest represents a login request
 type LoginRequest struct {
 	EmailOrUsername string `json:"email_or_username"`
@@ -36,11 +48,32 @@ type RefreshTokenRequest struct {
 }
 
 type UserResponse struct {
-	ID          int64  `json:"id"`
-	UID         string `json:"uid"`
-	Username    string `json:"username"`
-	Email       string `json:"email"`
-	IsSuperUser bool   `json:"is_superuser"`
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
+}
+
+// Register handles user registration
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	if err := h.handler.ParseJSON(r, &req); err != nil {
+		h.handler.RespondError(w, errors.ErrInvalidInput)
+		return
+	}
+
+	user, err := h.authService.Register(r.Context(), req.FirstName, req.LastName, req.Username, req.Email, req.Phone, req.Password)
+	if err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
+
+	res := UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	h.handler.RespondJSON(w, http.StatusCreated, res)
 }
 
 // Login handles user login
@@ -98,11 +131,9 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Construct and write the presentation response
 	resp := UserResponse{
-		ID:          user.ID,
-		UID:         user.UID,
-		Username:    user.Username,
-		Email:       user.Email,
-		IsSuperUser: user.IsSuperuser,
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -5,6 +5,8 @@ import (
 
 	"app/internal/domain/services"
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
 // AuthorizedEmailHandler handles authorized email HTTP requests
@@ -23,8 +25,8 @@ func NewAuthorizedEmailHandler(authorizedEmailService *services.AuthorizedEmailS
 
 // CreateAuthorizedEmailRequest represents a create authorized email request
 type CreateAuthorizedEmailRequest struct {
-	Email     string `json:"email"`
-	InviterID int64  `json:"inviter_id,omitempty"`
+	Email     string    `json:"email"`
+	InviterID uuid.UUID `json:"inviter_id,omitempty"`
 }
 
 // CreateAuthorizedEmail handles creating a new authorized email
@@ -37,7 +39,7 @@ func (h *AuthorizedEmailHandler) CreateAuthorizedEmail(w http.ResponseWriter, r 
 
 	// Get inviter ID from context if not provided
 	inviterID := req.InviterID
-	if inviterID == 0 {
+	if inviterID == uuid.Nil {
 		userID, ok := h.handler.GetUserIDFromContext(r)
 		if !ok {
 			h.handler.RespondError(w, errors.ErrUnauthorized)
@@ -46,7 +48,7 @@ func (h *AuthorizedEmailHandler) CreateAuthorizedEmail(w http.ResponseWriter, r 
 		inviterID = userID
 	}
 
-	authEmail, err := h.authorizedEmailService.CreateAuthorizedEmail(r.Context(), req.Email, inviterID)
+	authEmail, err := h.authorizedEmailService.CreateAuthorizedEmail(r.Context(), req.Email, &inviterID)
 	if err != nil {
 		h.handler.RespondError(w, err)
 		return

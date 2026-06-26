@@ -2,11 +2,12 @@ package services
 
 import (
 	"context"
-	"net/http"
 
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
 // AuthorizedEmailService handles authorized email business logic
@@ -24,29 +25,29 @@ func NewAuthorizedEmailService(emailRepo *repositories.AuthorizedEmailRepository
 }
 
 // CreateAuthorizedEmail creates a new authorized email
-func (s *AuthorizedEmailService) CreateAuthorizedEmail(ctx context.Context, email string, inviterID int64) (*entities.AuthorizedEmail, error) {
+func (s *AuthorizedEmailService) CreateAuthorizedEmail(ctx context.Context, email string, inviterID *uuid.UUID) (*entities.AuthorizedEmail, error) {
 	// Check if email already exists
 	exists, err := s.emailRepo.ExistsByEmail(ctx, email)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to check email existence", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to check email existence", "")
 	}
 	if exists {
 		return nil, errors.ErrConflict
 	}
 
 	// Verify inviter exists
-	if inviterID > 0 {
-		_, err := s.userRepo.FindByID(ctx, inviterID)
+	if inviterID != nil {
+		_, err := s.userRepo.FindByID(ctx, *inviterID)
 		if err != nil {
 			return nil, errors.ErrResourceNotFound
 		}
 	}
 
 	authEmail := entities.NewAuthorizedEmail(email)
-	authEmail.InviterID = &inviterID
+	authEmail.InviterID = inviterID
 
 	if err := s.emailRepo.Create(ctx, authEmail); err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to create authorized email", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to create authorized email", "")
 	}
 
 	return authEmail, nil
@@ -74,7 +75,7 @@ func (s *AuthorizedEmailService) GetAuthorizedEmailByEmail(ctx context.Context, 
 func (s *AuthorizedEmailService) ListAuthorizedEmails(ctx context.Context) ([]*entities.AuthorizedEmail, error) {
 	emails, err := s.emailRepo.List(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to list authorized emails", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to list authorized emails", "")
 	}
 	return emails, nil
 }
@@ -91,16 +92,16 @@ func (s *AuthorizedEmailService) MarkAsUsed(ctx context.Context, slug string) er
 	}
 
 	if err := s.emailRepo.MarkAsUsed(ctx, authEmail.ID); err != nil {
-		return errors.Wrap(err, 0, "Failed to mark email as used", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to mark email as used", "")
 	}
 
 	return nil
 }
 
 // DeleteAuthorizedEmail deletes an authorized email
-func (s *AuthorizedEmailService) DeleteAuthorizedEmail(ctx context.Context, id int64) error {
+func (s *AuthorizedEmailService) DeleteAuthorizedEmail(ctx context.Context, id uuid.UUID) error {
 	if err := s.emailRepo.Delete(ctx, id); err != nil {
-		return errors.Wrap(err, 0, "Failed to delete authorized email", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to delete authorized email", "")
 	}
 	return nil
 }

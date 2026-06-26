@@ -88,7 +88,7 @@ func (r *Router) setupRoutes() {
 
 		// Auth routes
 		router.With(httprate.LimitByIP(10, 1*time.Minute)).Route("/auth", func(router chi.Router) {
-			router.Post("/register", r.userHandler.Register)
+			router.Post("/register", r.authHandler.Register)
 			router.Post("/login", r.authHandler.Login)
 			router.Get("/me", r.authHandler.Me)
 			router.Post("/refresh", r.authHandler.RefreshToken)

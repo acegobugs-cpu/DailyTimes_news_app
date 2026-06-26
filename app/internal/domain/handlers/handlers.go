@@ -5,66 +5,51 @@ import (
 	"net/http"
 
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
-// Response represents a standard API response
-type Response struct {
-	Success bool   `json:"success"`
-	Code    int    `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
-	Data    any    `json:"data,omitempty"`
-}
-
-// Handler represents an HTTP handler
 type Handler struct{}
 
-// NewHandler creates a new HTTP handler
 func NewHandler() *Handler {
 	return &Handler{}
 }
 
-// RespondJSON writes a JSON response
+// RespondJSON handles all successful API responses using the unified layout
 func (h *Handler) RespondJSON(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	response := Response{
-		Success: statusCode >= 200 && statusCode < 300,
-		Data:    data,
+	// Maps exactly to the fields clients expect
+	response := errors.AppError{
+		Success:    true,
+		StatusCode: statusCode,
+		Data:       data,
 	}
 
 	json.NewEncoder(w).Encode(response)
 }
 
-// RespondError writes an error response
+// RespondError maps standard application failures to the exact same response structural layout
 func (h *Handler) RespondError(w http.ResponseWriter, err error) {
 	appErr := errors.FromAppError(err)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(appErr.GetStatusCode())
+	w.WriteHeader(appErr.GetStatusCode()) // Network HTTP response layer status code
 
-	response := Response{
-		Success: false,
-		Code:    appErr.Code,
-		Message: appErr.Message,
-	}
-
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(appErr) // Encodes directly since it contains the right JSON tags
 }
 
-// ParseJSON parses JSON request body
 func (h *Handler) ParseJSON(r *http.Request, v interface{}) error {
-	r.Body = http.MaxBytesReader(nil, r.Body, 10<<20) // 10 MB limit
+	r.Body = http.MaxBytesReader(nil, r.Body, 10<<20)
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-// GetUserIDFromContext gets user ID from context
-func (h *Handler) GetUserIDFromContext(r *http.Request) (int64, bool) {
-	userID, ok := r.Context().Value("user_id").(int64)
+func (h *Handler) GetUserIDFromContext(r *http.Request) (uuid.UUID, bool) {
+	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	return userID, ok
 }
 
-// GetRequestID gets request ID from context
 func (h *Handler) GetRequestID(r *http.Request) string {
 	requestID, ok := r.Context().Value("request_id").(string)
 	if !ok {

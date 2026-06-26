@@ -6,6 +6,8 @@ import (
 	"app/internal/domain/entities"
 	"app/internal/domain/services"
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
 // ArticleHandler handles article HTTP requests
@@ -59,7 +61,7 @@ func (h *ArticleHandler) CreateArticle(w http.ResponseWriter, r *http.Request) {
 
 	// Create locales
 	for _, transReq := range req.Translations {
-		locale := entities.NewArticleLocale(0, editorID, transReq.Locale, transReq.Title, transReq.Slug, transReq.Description)
+		locale := entities.NewArticleLocale(uuid.Nil, editorID, transReq.Locale, transReq.Title, transReq.Slug, transReq.Description)
 		locale.Content = transReq.Content
 		article.Translations = append(article.Translations, locale)
 	}

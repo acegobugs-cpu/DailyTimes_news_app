@@ -5,15 +5,16 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/pkg/errors"
+	"app/internal/pkg/logger"
 )
 
 // AuthService handles authentication business logic
@@ -54,11 +55,46 @@ type TokenPair struct {
 
 // Claims represents JWT claims
 type Claims struct {
-	UserID   int64  `json:"user_id"`
-	UID      string `json:"uid"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
 	jwt.RegisteredClaims
+}
+
+// Register registers a new user
+func (s *AuthService) Register(ctx context.Context, firstName, lastName, username, email, Phone, password string) (*entities.User, error) {
+	// Check if email already exists
+	exists, err := s.userRepo.ExistsByEmail(ctx, email)
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to check email existence", "")
+	}
+	if exists {
+		return nil, errors.ErrUserExists
+	}
+
+	// Check if username already exists
+	exists, err = s.userRepo.ExistsByUsername(ctx, username)
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to check username existence", "")
+	}
+	if exists {
+		return nil, errors.ErrUserExists
+	}
+
+	// Hash password
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to hash password", "")
+	}
+
+	// Create user
+	user := entities.NewUser(firstName, lastName, username, email, Phone, string(passwordHash))
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		logger.LogError(ctx, err, "")
+		return nil, errors.ErrInternalServer.W("Failed to create user", "")
+	}
+
+	return user, nil
 }
 
 // Login authenticates a user
@@ -126,13 +162,12 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString
 	newRefreshToken.UserAgent = refreshToken.UserAgent
 
 	if err := s.refreshTokenRepo.Rotate(ctx, refreshToken.ID, newRefreshToken); err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to rotate refresh token", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to rotate refresh token", "")
 	}
 
 	// Generate new access token
 	accessClaims := &Claims{
 		UserID:   user.ID,
-		UID:      user.UID,
 		Username: user.Username,
 		Email:    user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -145,7 +180,7 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString([]byte(s.jwtSecret))
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to sign access token", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to sign access token", "")
 	}
 
 	return &TokenPair{
@@ -184,16 +219,16 @@ func (s *AuthService) Logout(ctx context.Context, refreshTokenString string) err
 	}
 
 	if err := s.refreshTokenRepo.Revoke(ctx, refreshToken.ID); err != nil {
-		return errors.Wrap(err, 0, "Failed to revoke refresh token", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to revoke refresh token", "")
 	}
 
 	return nil
 }
 
 // LogoutAll revokes all refresh tokens for a user
-func (s *AuthService) LogoutAll(ctx context.Context, userID int64) error {
+func (s *AuthService) LogoutAll(ctx context.Context, userID uuid.UUID) error {
 	if err := s.refreshTokenRepo.RevokeAllForUser(ctx, userID); err != nil {
-		return errors.Wrap(err, 0, "Failed to revoke all refresh tokens", http.StatusInternalServerError)
+		return errors.ErrInternalServer.W("Failed to revoke all refresh tokens", "")
 	}
 	return nil
 }
@@ -203,7 +238,6 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User
 	// Generate access token
 	accessClaims := &Claims{
 		UserID:   user.ID,
-		UID:      user.UID,
 		Username: user.Username,
 		Email:    user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -216,7 +250,7 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString([]byte(s.jwtSecret))
 	if err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to sign access token", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to sign access token", "")
 	}
 
 	// Generate refresh token
@@ -229,7 +263,7 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User
 	refreshToken.UserAgent = &userAgent
 
 	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
-		return nil, errors.Wrap(err, 0, "Failed to create refresh token", http.StatusInternalServerError)
+		return nil, errors.ErrInternalServer.W("Failed to create refresh token", "")
 	}
 
 	return &TokenPair{
