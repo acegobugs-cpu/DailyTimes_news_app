@@ -105,6 +105,20 @@ CREATE TABLE IF NOT EXISTS authorized_emails (
 CREATE INDEX IF NOT EXISTS idx_authorized_emails_slug ON authorized_emails(slug);
 CREATE INDEX IF NOT EXISTS idx_authorized_emails_email ON authorized_emails(email);
 
+CREATE TABLE IF NOT EXISTS invites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fname VARCHAR(50) NOT NULL,
+    mname VARCHAR(50),
+    lname VARCHAR(50) NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    roleIds JSONB,
+    status VARCHAR(20) NOT NULL,
+    inviter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS media (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255),
@@ -119,21 +133,6 @@ CREATE TABLE IF NOT EXISTS media (
 );
 CREATE INDEX IF NOT EXISTS idx_media_url ON media(url);
 CREATE INDEX IF NOT EXISTS idx_media_type ON media(type);
-
--- CREATE OR REPLACE FUNCTION update_updated_at_column()
--- RETURNS TRIGGER AS $$
--- BEGIN
---     NEW.updated_at = CURRENT_TIMESTAMP;
---     RETURN NEW;
--- END;
--- $$ language 'plpgsql';
-
--- CREATE OR REPLACE TRIGGER update_articles_updated_at BEFORE UPDATE ON articles
---     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- CREATE OR REPLACE TRIGGER update_article_locale_updated_at BEFORE UPDATE ON article_locale
---     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 
 -- +goose Down
 SELECT 'down SQL query';

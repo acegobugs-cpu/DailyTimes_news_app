@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"app/internal/domain/handlers"
 	"app/internal/domain/repositories"
 	"app/internal/domain/services"
+	"app/internal/infra/caching"
 	"app/internal/infra/database"
 	"app/internal/infra/storage"
 	httpInterface "app/internal/interfaces/http"
@@ -50,6 +52,11 @@ func main() {
 		logger.Fatal("Failed to initialize database", zap.Error(err))
 	}
 
+	cache, err := caching.NewRedisCache("localhost:6379", "", 0)
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+
 	s3Endpoint := "http://localhost:4566"
 	bucketName := "media-bucket"
 	region := "us-east-1"
@@ -68,8 +75,8 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	articleRepo := repositories.NewArticleRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
-	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
 	authEmailRepo := repositories.NewAuthorizedEmailRepository(db)
+	invitesRepo := repositories.NewInvitesRepository(db)
 	mediaRepo := repositories.NewMediaRepository(db)
 
 	// Seed superadmin user
@@ -78,10 +85,10 @@ func main() {
 	}
 
 	// Initialize services
-	userService := services.NewUserService(userRepo)
+	userService := services.NewUserService(userRepo, invitesRepo, cache)
 	authService := services.NewAuthService(
 		userRepo,
-		refreshTokenRepo,
+		cache,
 		cfg.JWT.Secret,
 		cfg.JWT.AccessDuration,
 		cfg.JWT.RefreshDuration,
@@ -93,7 +100,7 @@ func main() {
 	mediaService := services.NewMediaService(mediaRepo, storageSvc, maxFileSize, publicURL)
 
 	// Initialize HTTP handlers
-	userHandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService, cache)
 	authHandler := handlers.NewAuthHandler(authService)
 	articleHandler := handlers.NewArticleHandler(articleService)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)

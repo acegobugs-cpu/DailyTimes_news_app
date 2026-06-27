@@ -147,23 +147,22 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 
 func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, emailOrUsername string) (*entities.User, error) {
 	query := `
-		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
+		SELECT id, fname, lname, uname, email, phone,  h_password
 		FROM users WHERE email = $1 OR uname = $1
 	`
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, emailOrUsername).Scan(
 		&user.ID,
-
 		&user.FirstName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
+		&user.Phone,
 		&user.PasswordHash,
-		&user.CreatedAt,
 	)
 
 	if err == pgx.ErrNoRows {
-		return nil, errors.ErrResourceNotFound
+		return nil, errors.ErrResourceNotFound.W("ddd", "")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user by email or username: %w", err)

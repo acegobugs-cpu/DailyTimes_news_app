@@ -2,25 +2,97 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
+	"app/internal/infra/caching"
 	"app/internal/pkg/errors"
 )
 
 // UserService handles user business logic
 type UserService struct {
-	userRepo *repositories.UserRepository
+	userRepo    *repositories.UserRepository
+	invitesRepo *repositories.InvitesRepository
+	cache       *caching.RedisCache
 }
 
 // NewUserService creates a new user service
-func NewUserService(userRepo *repositories.UserRepository) *UserService {
+func NewUserService(userRepo *repositories.UserRepository, invitesRepo *repositories.InvitesRepository, cache *caching.RedisCache) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:    userRepo,
+		invitesRepo: invitesRepo,
+		cache:       cache,
 	}
+}
+
+type RegisterRequest struct {
+	FirstName  string   `json:"firstName"`
+	MiddleName string   `json:"middleName"`
+	LastName   string   `json:"lastName"`
+	Email      string   `json:"email"`
+	Phone      string   `json:"phone"`
+	RoleIDs    []string `json:"roleIds"`
+}
+
+type CachedUserData struct {
+	Name    string   `json:"name" redis:"name"`
+	Email   string   `json:"email" redis:"email"`
+	Phone   string   `json:"phone" redis:"phone"`
+	RoleIDs []string `json:"roleIds" redis:"roleIds"`
+}
+
+type RegisterResponse struct {
+	Name      string   `json:"name"`
+	Email     string   `json:"email"`
+	Phone     string   `json:"phone"`
+	RoleNames []string `json:"roleNames"` // Resolved from role_ids
+}
+
+func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest, inviterId uuid.UUID, ttl time.Duration) (*string, error) {
+	// FIX: Calculate the expiration time by adding the duration directly to time.Now()
+	expiresAt := time.Now().Add(ttl)
+	// 2. Generate a cryptographically secure short-lived token
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return nil, errors.ErrInternalServer.W("failed to generate token", "")
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	// Updated to match your custom NewInvites constructor layout perfectly
+	var invite = entities.NewInvites(
+		user.FirstName,
+		user.MiddleName,
+		user.LastName,
+		user.Email,
+		user.Phone,
+		user.RoleIDs,
+		"PENDING",
+		inviterId,
+		expiresAt,
+	)
+
+	// Step 1: Persist the base record to Postgres to generate its unique UUID
+	if err := s.invitesRepo.Create(ctx, invite); err != nil {
+		return nil, errors.ErrInternalServer.W("failed to create system invitation record", "").Log(ctx, err, true)
+	}
+
+	// Step 2: Push the token to Redis mapping to the Postgres UUID string
+	redisKey := fmt.Sprintf("invite:token:%s", token)
+
+	// Storing just the string ID allows you to refresh the token independently at any time!
+	err := s.cache.Client.Set(ctx, redisKey, invite.ID.String(), ttl).Err()
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("failed to cache security token session", "").Log(ctx, err, true)
+	}
+
+	return &token, nil
 }
 
 // GetUserByID retrieves a user by ID

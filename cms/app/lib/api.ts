@@ -87,15 +87,15 @@ class ApiClient {
   }
 
   // Email API
-  async authorizeEmail(data: { email: string }) {
-    return this.request<Email>("/api/v1/authorize-emails", {
+  async invite(data: { email: string }) {
+    return this.request<Email>("/api/v1/users/invite", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async getEmails() {
-    return this.request<Email[]>("/api/v1/authorize-emails");
+  async getInvites() {
+    return this.request<Email[]>("/api/v1/users/invites");
   }
 
   async deleteEmails(id: number) {

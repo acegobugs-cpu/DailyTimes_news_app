@@ -54,12 +54,14 @@ func (e *AppError) W(msg string, details string) *AppError {
 }
 
 // Log logs the error contextually and immediately halts the request cycle
-func (e *AppError) Log(ctx context.Context) {
+func (e *AppError) Log(ctx context.Context, err error, trace ...bool) *AppError {
 	// 1. Fire your existing logger
-	logger.LogError(ctx, nil, e.Error())
-
-	// 2. Short-circuit the request cycle instantly!
-	panic(e)
+	showTrace := false
+	if len(trace) > 0 && trace[0] {
+		showTrace = true
+	}
+	logger.LogError(ctx, err, e.Error(), showTrace)
+	return e
 }
 
 // Common error constructors

@@ -72,7 +72,7 @@ func TestRegister_Integration(t *testing.T) {
 	// ... set up Chi router and execute your request here ...
 	r := chi.NewRouter()
 	r.Route("/auth", func(router chi.Router) {
-		router.Post("/register", authHandler.Register)
+		router.Post("/register", authHandler.Signin)
 	})
 
 	// 5. Prepare a real registration payload

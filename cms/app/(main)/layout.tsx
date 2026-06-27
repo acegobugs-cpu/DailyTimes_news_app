@@ -18,7 +18,7 @@ export default function MainLayout({
       <div className="w-full relative">
       <Nav />
       <main
-        className={`m-4 flex items-center justify-center transition-all duration-300`}
+        className={`top-15 m-4`}
       >
         {children}
       </main>

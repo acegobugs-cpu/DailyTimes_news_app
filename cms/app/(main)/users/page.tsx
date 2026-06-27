@@ -19,30 +19,13 @@ interface UpdateFormData {
 export default function AuthorizeEmail() {
   const { user } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [slug, setSlug] = useState("");
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (!user?.is_superuser) {
+    if (!user) {
       router.push("/login");
     }
   }, [user, router]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSuccess(null);
-    setError(null);
-    try {
-      const res = await apiClient.authorizeEmail({ email });
-      setSlug(res.slug);
-      setSuccess("Email authorized successfully.");
-    } catch (err) {
-      setError("Failed to authorize email.");
-    }
-  };
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -59,46 +42,6 @@ export default function AuthorizeEmail() {
       )}
 
       <UserList onEditUser={(user) => setEditingUser(user)} />
-
-      <div className="mt-8 p-6 bg-white rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold mb-4 text-gray-800">
-          Authorize New Editor
-        </h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Editor Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full border border-gray-300 p-3 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 transition-colors"
-          >
-            Authorize Email
-          </button>
-        </form>
-
-        {success && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-800">
-              {success} — share this link:
-              <code className="bg-green-100 px-3 py-1 rounded ml-2 font-mono">
-                /register/{slug}
-              </code>
-            </p>
-          </div>
-        )}
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800">{error}</p>
-          </div>
-        )}
-      </div>
-
-      <EmailList />
     </div>
   );
 }
@@ -152,112 +95,47 @@ function UserList({ onEditUser }: UserListProps) {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr
-                key={u.id}
-                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              >
-                <td className="p-3 text-gray-800">{`${u.name}`}</td>
-                <td className="p-3 text-gray-800">{u.username || "N/A"}</td>
-                <td className="p-3 text-gray-800">{u.email}</td>
-                <td className="p-3">{u.is_superuser ? "✅" : "❌"}</td>
-                <td className="p-3">
-                  <div className="flex gap-2">
-                    {currentUser?.id !== u.id && (
-                      <>
-                        <button
-                          onClick={() => onEditUser(u)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(u.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function EmailList() {
-  const [emails, setEmails] = useState<Email[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchEmails = async () => {
-    try {
-      const emailsData = await apiClient.getEmails();
-      setEmails(emailsData);
-    } catch {
-      setError("Failed to fetch emails");
-    }
-  };
-
-  useEffect(() => {
-    fetchEmails();
-  }, []);
-
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this email?")) {
-      try {
-        await apiClient.deleteEmails(id);
-        setEmails((prev) => prev.filter((email) => email.id !== id));
-      } catch {
-        setError("Failed to delete email");
-      }
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mt-8">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">
-        Authorized Emails List
-      </h1>
-      {error && <p className="text-red-600 mb-4">{error}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b-2 border-gray-200">
-              <th className="p-3 font-semibold text-gray-700">ID</th>
-              <th className="p-3 font-semibold text-gray-700">Slug</th>
-              <th className="p-3 font-semibold text-gray-700">Email</th>
-              <th className="p-3 font-semibold text-gray-700">Inviter ID</th>
-              <th className="p-3 font-semibold text-gray-700">Used</th>
-              <th className="p-3 font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {emails.map((e) => (
-              <tr
-                key={e.id}
-                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              >
-                <td className="p-3 text-gray-800">{e.id}</td>
-                <td className="p-3 text-gray-800">{e.slug}</td>
-                <td className="p-3 text-gray-800">{e.email}</td>
-                <td className="p-3 text-gray-800">{e.inviter_id || "N/A"}</td>
-                <td className="p-3">{e.used ? "✅" : "❌"}</td>
-                <td className="p-3">
+    {users.length > 0 ? (
+      users.map((u) => (
+        <tr
+          key={u.id}
+          className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+        >
+          <td className="p-3 text-gray-800">{`${u.name}`}</td>
+          <td className="p-3 text-gray-800">{u.username || "N/A"}</td>
+          <td className="p-3 text-gray-800">{u.email}</td>
+          <td className="p-3">{u.is_superuser ? "✅" : "❌"}</td>
+          <td className="p-3">
+            <div className="flex gap-2">
+              {currentUser?.id !== u.id && (
+                <>
                   <button
-                    onClick={() => handleDelete(e.id)}
+                    onClick={() => onEditUser(u)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(u.id)}
                     className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
                   >
                     Delete
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+                </>
+              )}
+            </div>
+          </td>
+        </tr>
+      ))
+    ) : (
+      /* Beautiful Empty State Row spanning all 5 columns */
+      <tr>
+        <td colSpan={5} className="p-8 text-center text-gray-400 font-medium">
+          No users found in the system.
+        </td>
+      </tr>
+    )}
+  </tbody>
         </table>
       </div>
     </div>

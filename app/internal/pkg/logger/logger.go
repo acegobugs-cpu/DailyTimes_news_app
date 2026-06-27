@@ -127,15 +127,30 @@ func LogRequest(ctx context.Context, method, path string, statusCode int, latenc
 }
 
 // LogError logs an error with context
-func LogError(ctx context.Context, err error, msg string) {
+func LogError(ctx context.Context, err error, msg string, withTrace ...bool) {
 	logger := WithContext(ctx)
+
+	// Check if trace was explicitly requested
+	showTrace := false
+	if len(withTrace) > 0 && withTrace[0] {
+		showTrace = true
+	}
+
+	// Configure trace fallback dynamically
+	var opts zap.Option
+	if showTrace {
+		opts = zap.AddStacktrace(zap.ErrorLevel) // Captures path
+	} else {
+		opts = zap.AddStacktrace(zap.PanicLevel) // Mutes path
+	}
+
 	if err != nil {
-		logger.Error(msg,
+		logger.WithOptions(opts).Error(msg,
 			zap.Error(err),
 			zap.String("error_type", fmt.Sprintf("%T", err)),
 		)
 	} else {
-		logger.Error(msg)
+		logger.WithOptions(opts).Error(msg)
 	}
 }
 
