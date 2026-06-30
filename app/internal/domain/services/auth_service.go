@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 
 	"app/internal/domain/entities"
@@ -123,15 +124,14 @@ func (s *AuthService) Login(ctx context.Context, emailOrUsername, password, ipAd
 
 func (s *AuthService) Me(ctx context.Context, accessToken string) (*entities.User, error) {
 	// 1. Validate the string token and extract claims
-	// claims, err := s.ValidateAccessToken(accessToken)
-	// if err != nil {
-	// 	// Mapping invalid/expired JWTs cleanly to unauthorized
-	// 	return nil, errors.ErrInvalidToken
-	// }
-
+	claims, err := s.ValidateAccessToken(accessToken)
+	if err != nil {
+		// Mapping invalid/expired JWTs cleanly to unauthorized
+		return nil, errors.ErrInvalidToken
+	}
 	// 2. Fetch the latest user profile state from the database
-	userID := uuid.MustParse("52baa465-7424-45e2-b58c-bae9fcb9708b")
-	user, err := s.userRepo.FindByID(ctx, userID)
+	// userID := uuid.MustParse(claims.UserID)
+	user, err := s.userRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
 		return nil, errors.ErrResourceNotFound
 	}
@@ -139,105 +139,187 @@ func (s *AuthService) Me(ctx context.Context, accessToken string) (*entities.Use
 	return user, nil
 }
 
-// RefreshAccessToken refreshes an access token using a refresh token
-// func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString string) (*TokenPair, error) {
-// 	refreshTokenHash := hashToken(refreshTokenString)
-// 	refreshToken, err := s.refreshTokenRepo.FindByTokenHash(ctx, refreshTokenHash)
-// 	if err != nil {
-// 		return nil, errors.ErrInvalidToken
-// 	}
+// 1. Define the Lua Script at the package or global level
+var rotateTokenLua = redis.NewScript(`
+    local old_key = KEYS[1]
+    local new_key = KEYS[2]
+    local new_payload = ARGV[1]
+    local ttl = tonumber(ARGV[2])
 
-// 	if !refreshToken.IsValid() {
-// 		return nil, errors.ErrTokenExpired
-// 	}
+    -- Check if old token exists
+    local old_exists = redis.call("EXISTS", old_key)
+    if old_exists == 0 then
+        return {err = "OLD_TOKEN_NOT_FOUND"}
+    end
 
-// 	// Get user
-// 	user, err := s.userRepo.FindByID(ctx, refreshToken.UserID)
-// 	if err != nil {
-// 		return nil, errors.ErrResourceNotFound
-// 	}
+    -- Write the new token with its TTL
+    redis.call("SET", new_key, new_payload, "EX", ttl)
 
-// 	// Rotate refresh token
-// 	newRefreshTokenString := generateRandomToken()
-// 	newRefreshTokenHash := hashToken(newRefreshTokenString)
-// 	newExpiresAt := time.Now().Add(s.refreshDuration)
-// 	newRefreshToken := entities.NewRefreshToken(user.ID, newRefreshTokenHash, newExpiresAt)
-// 	newRefreshToken.IPAddress = refreshToken.IPAddress
-// 	newRefreshToken.UserAgent = refreshToken.UserAgent
+    -- Delete the old token immediately
+    redis.call("DEL", old_key)
 
-// 	if err := s.refreshTokenRepo.Rotate(ctx, refreshToken.ID, newRefreshToken); err != nil {
-// 		return nil, errors.ErrInternalServer.W("Failed to rotate refresh token", "")
-// 	}
+    return "OK"
+`)
 
-// 	// Generate new access token
-// 	accessClaims := &Claims{
-// 		UserID:   user.ID,
-// 		Username: user.Username,
-// 		Email:    user.Email,
-// 		RegisteredClaims: jwt.RegisteredClaims{
-// 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessDuration)),
-// 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-// 			Issuer:    s.issuer,
-// 		},
-// 	}
+func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString string) (*TokenPair, error) {
+	oldTokenHash := hashToken(refreshTokenString)
+	oldRedisKey := fmt.Sprintf("refresh:token:%s", oldTokenHash)
 
-// 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-// 	accessTokenString, err := accessToken.SignedString([]byte(s.jwtSecret))
-// 	if err != nil {
-// 		return nil, errors.ErrInternalServer.W("Failed to sign access token", "")
-// 	}
+	// Step 1 & 2: We still need to fetch and read it first to get the UserID
+	// before writing the new pattern key.
+	jsonData, err := s.cache.Client.Get(ctx, oldRedisKey).Result()
+	if err != nil {
+		return nil, errors.ErrInvalidToken
+	}
 
-// 	return &TokenPair{
-// 		AccessToken:  accessTokenString,
-// 		RefreshToken: newRefreshTokenString,
-// 		ExpiresIn:    int64(s.accessDuration.Seconds()),
-// 	}, nil
-// }
+	var currentSession entities.RefreshToken
+	if err := json.Unmarshal([]byte(jsonData), &currentSession); err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to read cached token structure", "").Log(ctx, err, true)
+	}
 
-// // ValidateAccessToken validates an access token and returns claims
-// func (s *AuthService) ValidateAccessToken(tokenString string) (*Claims, error) {
-// 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-// 			return nil, errors.ErrInvalidToken
-// 		}
-// 		return []byte(s.jwtSecret), nil
-// 	})
+	if time.Now().After(currentSession.ExpiresAt) {
+		s.cache.Client.Del(ctx, oldRedisKey)
+		return nil, errors.ErrTokenExpired
+	}
 
-// 	if err != nil {
-// 		return nil, errors.ErrInvalidToken
-// 	}
+	user, err := s.userRepo.FindByID(ctx, currentSession.UserID)
+	if err != nil {
+		return nil, errors.ErrResourceNotFound
+	}
 
-// 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-// 		return claims, nil
-// 	}
+	// Step 3: Prepare the new token session properties
+	newRefreshTokenString := generateRandomToken()
+	newRefreshTokenHash := hashToken(newRefreshTokenString)
+	newExpiresAt := time.Now().Add(s.refreshDuration)
 
-// 	return nil, errors.ErrInvalidToken
-// }
+	newSession := entities.NewRefreshToken(user.ID, newRefreshTokenHash, newExpiresAt)
+	newSession.IPAddress = currentSession.IPAddress
+	newSession.UserAgent = currentSession.UserAgent
 
-// // Logout revokes a refresh token
-// func (s *AuthService) Logout(ctx context.Context, refreshTokenString string) error {
-// 	refreshTokenHash := hashToken(refreshTokenString)
-// 	refreshToken, err := s.refreshTokenRepo.FindByTokenHash(ctx, refreshTokenHash)
-// 	if err != nil {
-// 		return errors.ErrInvalidToken
-// 	}
+	newRedisKey := fmt.Sprintf("refresh:token:%s:%s", user.ID.String(), newRefreshTokenHash)
+	newJsonData, err := json.Marshal(newSession)
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to serialize rotated session data", "").Log(ctx, err, true)
+	}
 
-// 	if err := s.refreshTokenRepo.Revoke(ctx, refreshToken.ID); err != nil {
-// 		return errors.ErrInternalServer.W("Failed to revoke refresh token", "")
-// 	}
+	// === ATOMIC EXECUTION STEP ===
+	// Keys mapped to Lua: KEYS[1] = oldRedisKey, KEYS[2] = newRedisKey
+	// Args mapped to Lua: ARGV[1] = string representation, ARGV[2] = TTL integer in seconds
+	ttlSeconds := int(s.refreshDuration.Seconds())
 
-// 	return nil
-// }
+	_, err = rotateTokenLua.Run(ctx, s.cache.Client, []string{oldRedisKey, newRedisKey}, string(newJsonData), ttlSeconds).Result()
+	if err != nil {
+		// If another concurrent request already completed this, Lua will fail or return an error string
+		if err.Error() == "OLD_TOKEN_NOT_FOUND" {
+			return nil, errors.ErrInvalidToken
+		}
+		return nil, errors.ErrInternalServer.W("Atomic rotation pipeline execution failed", "").Log(ctx, err, true)
+	}
+	// =============================
 
-// // LogoutAll revokes all refresh tokens for a user
-// func (s *AuthService) LogoutAll(ctx context.Context, userID uuid.UUID) error {
-// 	if err := s.refreshTokenRepo.RevokeAllForUser(ctx, userID); err != nil {
-// 		return errors.ErrInternalServer.W("Failed to revoke all refresh tokens", "")
-// 	}
-// 	return nil
-// }
+	// Step 4: Safely generate Access JWT now that Redis state guarantees integrity
+	accessClaims := &Claims{
+		UserID:   user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessDuration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    s.issuer,
+		},
+	}
 
-// // GenerateTokenPair generates access and refresh tokens
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessTokenString, err := accessToken.SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to sign access token", "").Log(ctx, err, true)
+	}
+
+	return &TokenPair{
+		AccessToken:  accessTokenString,
+		RefreshToken: newRefreshTokenString,
+		ExpiresIn:    int64(s.accessDuration.Seconds()),
+	}, nil
+}
+
+// ValidateAccessToken validates an access token and returns claims
+func (s *AuthService) ValidateAccessToken(tokenString string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.ErrInvalidToken
+		}
+		return []byte(s.jwtSecret), nil
+	})
+
+	if err != nil {
+		return nil, errors.ErrInvalidToken
+	}
+
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.ErrInvalidToken
+}
+
+// Logout revokes a single refresh token by deleting it from Redis
+func (s *AuthService) Logout(ctx context.Context, refreshTokenString string) error {
+	refreshTokenHash := hashToken(refreshTokenString)
+
+	// 1. Build the redis key structure (assuming you have the user ID or just the hash)
+	// If you included the userID in your key layout, you would pass it here.
+	// If you are only using the token hash as the key:
+	redisKey := fmt.Sprintf("refresh:token:%s", refreshTokenHash)
+
+	// 2. Execute a direct Delete operation on the key string
+	deleted, err := s.cache.Client.Del(ctx, redisKey).Result()
+	if err != nil {
+		return errors.ErrInternalServer.W("Failed to delete refresh token from cache", "").Log(ctx, err, true)
+	}
+
+	// If deleted == 0, it means the key didn't exist (already expired or bad token)
+	if deleted == 0 {
+		return errors.ErrInvalidToken
+	}
+
+	return nil
+}
+
+// LogoutAll revokes all refresh tokens belonging to a specific user ID
+func (s *AuthService) LogoutAll(ctx context.Context, userID uuid.UUID) error {
+	// If you updated your key strategy to include the user ID: "refresh:token:userID:*"
+	pattern := fmt.Sprintf("refresh:token:%s:*", userID.String())
+
+	var cursor uint64
+	var keys []string
+	var err error
+
+	// 1. Safe incremental search across Redis using SCAN instead of the dangerous KEYS command
+	for {
+		var scannedKeys []string
+		scannedKeys, cursor, err = s.cache.Client.Scan(ctx, cursor, pattern, 100).Result()
+		if err != nil {
+			return errors.ErrInternalServer.W("Failed to scan active user sessions", "").Log(ctx, err, true)
+		}
+
+		keys = append(keys, scannedKeys...)
+		if cursor == 0 {
+			break // Complete iteration loop finished
+		}
+	}
+
+	// 2. If active sessions exist for this user, delete them all at once
+	if len(keys) > 0 {
+		err = s.cache.Client.Del(ctx, keys...).Err()
+		if err != nil {
+			return errors.ErrInternalServer.W("Failed to clear active user sessions", "").Log(ctx, err, true)
+		}
+	}
+
+	return nil
+}
+
+// GenerateTokenPair generates access and refresh tokens
 func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User, ipAddress, userAgent string) (*TokenPair, error) {
 	// 1. Generate access token
 	accessClaims := &Claims{
@@ -268,7 +350,7 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User
 	refreshToken.UserAgent = &userAgent
 
 	// FIX 1: Use the hash string as the key instead of formatting the raw object
-	redisKey := fmt.Sprintf("refresh:token:%s", refreshTokenHash)
+	redisKey := fmt.Sprintf("refresh:token:%s:%s", user.ID.String(), refreshTokenHash)
 
 	// FIX 2: Marshal struct to JSON string before hitting Redis engine
 	jsonData, err := json.Marshal(refreshToken)

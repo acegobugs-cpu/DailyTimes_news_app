@@ -7,10 +7,10 @@ import {
   User,
   Article,
   Category,
-  Email,
   MediaFile,
   ArticleTranslation,
   ArticleUpdate,
+  Invite,
 } from "../types/types";
 
 class ApiClient {
@@ -87,18 +87,25 @@ class ApiClient {
   }
 
   // Email API
-  async invite(data: { email: string }) {
-    return this.request<Email>("/api/v1/users/invite", {
+  async invite(data: {
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    roleIds: string[];
+  }) {
+    return this.request<Invite>("/api/v1/users/invite", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getInvites() {
-    return this.request<Email[]>("/api/v1/users/invites");
+    return this.request<{success: boolean, statusCode: number, data:Invite[]}>("/api/v1/users/invites");
   }
 
-  async deleteEmails(id: number) {
+  async deleteEmails(id: string) {
     return this.request(`/api/v1/authorize-emails/${id}`, {
       method: "DELETE",
     });

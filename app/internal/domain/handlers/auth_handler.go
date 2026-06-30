@@ -109,18 +109,12 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// 1. Extract Bearer Token from Authorization Header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
+	cookie, err := r.Cookie("access_token")
+	if err != nil {
 		h.handler.RespondError(w, errors.ErrUnauthorized)
 		return
 	}
-
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-		h.handler.RespondError(w, errors.ErrUnauthorized)
-		return
-	}
-	accessToken := parts[1]
+	accessToken := cookie.Value
 
 	// 2. Execute Service Layer Logic
 	user, err := h.authService.Me(ctx, accessToken)
@@ -142,73 +136,72 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 // RefreshToken handles refreshing an access token
-// func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-// 	var req RefreshTokenRequest
-// 	if err := h.handler.ParseJSON(r, &req); err != nil {
-// 		h.handler.RespondError(w, errors.ErrInvalidInput)
-// 		return
-// 	}
+func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+	if err := h.handler.ParseJSON(r, &req); err != nil {
+		h.handler.RespondError(w, errors.ErrInvalidInput)
+		return
+	}
 
-// 	tokens, err := h.authService.RefreshAccessToken(r.Context(), req.RefreshToken)
-// 	if err != nil {
-// 		h.handler.RespondError(w, err)
-// 		return
-// 	}
+	tokens, err := h.authService.RefreshAccessToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
 
-// 	h.handler.RespondJSON(w, http.StatusOK, tokens)
-// }
+	h.handler.RespondJSON(w, http.StatusOK, tokens)
+}
 
-// // Logout handles user logout
-// func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-// 	var req RefreshTokenRequest
-// 	if err := h.handler.ParseJSON(r, &req); err != nil {
-// 		h.handler.RespondError(w, errors.ErrInvalidInput)
-// 		return
-// 	}
+// Logout handles user logout
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+	if err := h.handler.ParseJSON(r, &req); err != nil {
+		h.handler.RespondError(w, errors.ErrInvalidInput)
+		return
+	}
 
-// 	if err := h.authService.Logout(r.Context(), req.RefreshToken); err != nil {
-// 		h.handler.RespondError(w, err)
-// 		return
-// 	}
+	if err := h.authService.Logout(r.Context(), req.RefreshToken); err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
 
-// 	h.handler.RespondJSON(w, http.StatusOK, map[string]string{"message": "Logged out successfully"})
-// }
+	h.handler.RespondJSON(w, http.StatusOK, map[string]string{"message": "Logged out successfully"})
+}
 
-// // LogoutAll handles logging out from all devices
-// func (h *AuthHandler) LogoutAll(w http.ResponseWriter, r *http.Request) {
-// 	userID, ok := h.handler.GetUserIDFromContext(r)
-// 	if !ok {
-// 		h.handler.RespondError(w, errors.ErrUnauthorized)
-// 		return
-// 	}
+// LogoutAll handles logging out from all devices
+func (h *AuthHandler) LogoutAll(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.handler.GetUserIDFromContext(r)
+	if !ok {
+		h.handler.RespondError(w, errors.ErrUnauthorized)
+		return
+	}
 
-// 	if err := h.authService.LogoutAll(r.Context(), userID); err != nil {
-// 		h.handler.RespondError(w, err)
-// 		return
-// 	}
+	if err := h.authService.LogoutAll(r.Context(), userID); err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
 
-// 	h.handler.RespondJSON(w, http.StatusOK, map[string]string{"message": "Logged out from all devices"})
-// }
+	h.handler.RespondJSON(w, http.StatusOK, map[string]string{"message": "Logged out from all devices"})
+}
 
-// // VerifyToken handles token verification
-// func (h *AuthHandler) VerifyToken(w http.ResponseWriter, r *http.Request) {
-// 	authHeader := r.Header.Get("Authorization")
-// 	if authHeader == "" {
-// 		h.handler.RespondError(w, errors.ErrUnauthorized)
-// 		return
-// 	}
+// VerifyToken handles token verification
+func (h *AuthHandler) VerifyToken(w http.ResponseWriter, r *http.Request) {
+	// 1. Extract Bearer Token from Authorization Header
+	cookie, err := r.Cookie("access_token")
+	if err != nil {
+		h.handler.RespondError(w, errors.ErrUnauthorized)
+		return
+	}
+	accessToken := cookie.Value
 
-// 	// Extract token from "Bearer <token>"
-// 	tokenString := authHeader[7:] // Remove "Bearer " prefix
+	claims, err := h.authService.ValidateAccessToken(accessToken)
+	if err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
 
-// 	claims, err := h.authService.ValidateAccessToken(tokenString)
-// 	if err != nil {
-// 		h.handler.RespondError(w, err)
-// 		return
-// 	}
-
-// 	h.handler.RespondJSON(w, http.StatusOK, claims)
-// }
+	h.handler.RespondJSON(w, http.StatusOK, claims)
+}
 
 func (h *AuthHandler) readUserIP(r *http.Request) string {
 	// Check if a proxy forwarded the real user IP

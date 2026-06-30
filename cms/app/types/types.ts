@@ -14,14 +14,8 @@ export interface RegisterData {
 
 export interface User {
   id: number;
-  uid: string;
   email: string;
-  username?: string;
-  name: string;
-  role: string;
-  is_superuser?: boolean;
-  created_at?: string;
-  updated_at?: string;
+  username: string;
 }
 
 export interface Article {
@@ -49,7 +43,7 @@ export interface ArticleTranslation {
 }
 
 export interface ArticleUpdate {
-  id: number;
+  id: string;
   tag: string;
   media?: Media;
   category_ids: number[];
@@ -64,13 +58,16 @@ export interface Category {
   slug: string;
 }
 
-export interface Email {
-  id: number;
+export interface Invite {
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   email: string;
-  slug: string;
-  inviter_id?: string;
-  used: boolean;
-  created_at?: string;
+  phone: string;
+  inviterId?: string;
+  status: string;
+  roleIds?: string[];
 }
 
 export interface MediaFile {

@@ -102,12 +102,12 @@ func Sync() error {
 }
 
 // WithField returns a logger with additional field
-func WithField(key string, value interface{}) *zap.Logger {
+func WithField(key string, value any) *zap.Logger {
 	return GetLogger().With(zap.Any(key, value))
 }
 
 // WithFields returns a logger with additional fields
-func WithFields(fields map[string]interface{}) *zap.Logger {
+func WithFields(fields map[string]any) *zap.Logger {
 	zapFields := make([]zap.Field, 0, len(fields))
 	for k, v := range fields {
 		zapFields = append(zapFields, zap.Any(k, v))

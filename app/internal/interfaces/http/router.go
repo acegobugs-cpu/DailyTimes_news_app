@@ -91,16 +91,16 @@ func (r *Router) setupRoutes() {
 			router.Post("/signin", r.authHandler.Signin)
 			router.Post("/login", r.authHandler.Login)
 			router.Get("/me", r.authHandler.Me)
-			// router.Post("/refresh", r.authHandler.RefreshToken)
-			// router.Post("/logout", r.authHandler.Logout)
-			// router.Post("/logout-all", r.authHandler.LogoutAll)
-			// router.Post("/verify", r.authHandler.VerifyToken)
+			router.Post("/refresh", r.authHandler.RefreshToken)
+			router.Post("/logout", r.authHandler.Logout)
+			router.Post("/logout-all", r.authHandler.LogoutAll)
+			router.Post("/verify", r.authHandler.VerifyToken)
 		})
 
 		// User routes
 		router.Route("/users", func(router chi.Router) {
 			router.Post("/invite", r.userHandler.Invite)
-			router.Get("/invites", r.userHandler.GetPendingRegistration)
+			router.Get("/invites", r.userHandler.GetInvitationList)
 			router.Get("/", r.userHandler.ListUsers)
 			router.Route("/{id}", func(router chi.Router) {
 				router.Get("/", r.userHandler.GetUser)

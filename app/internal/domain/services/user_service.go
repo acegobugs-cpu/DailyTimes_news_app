@@ -13,22 +13,25 @@ import (
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/infra/caching"
+	"app/internal/infra/email"
 	"app/internal/pkg/errors"
 )
 
 // UserService handles user business logic
 type UserService struct {
-	userRepo    *repositories.UserRepository
-	invitesRepo *repositories.InvitesRepository
-	cache       *caching.RedisCache
+	userRepo     *repositories.UserRepository
+	invitesRepo  *repositories.InvitesRepository
+	emailService *email.EmailService
+	cache        *caching.RedisCache
 }
 
 // NewUserService creates a new user service
-func NewUserService(userRepo *repositories.UserRepository, invitesRepo *repositories.InvitesRepository, cache *caching.RedisCache) *UserService {
+func NewUserService(userRepo *repositories.UserRepository, invitesRepo *repositories.InvitesRepository, emailService *email.EmailService, cache *caching.RedisCache) *UserService {
 	return &UserService{
-		userRepo:    userRepo,
-		invitesRepo: invitesRepo,
-		cache:       cache,
+		userRepo:     userRepo,
+		invitesRepo:  invitesRepo,
+		emailService: emailService,
+		cache:        cache,
 	}
 }
 
@@ -49,23 +52,24 @@ type CachedUserData struct {
 }
 
 type RegisterResponse struct {
-	Name      string   `json:"name"`
-	Email     string   `json:"email"`
-	Phone     string   `json:"phone"`
-	RoleNames []string `json:"roleNames"` // Resolved from role_ids
+	Fname   string   `json:"firstName"`
+	Mname   string   `json:"middleName"`
+	Lname   string   `json:"lastName"`
+	Email   string   `json:"email"`
+	Phone   string   `json:"phone"`
+	RoleIDs []string `json:"roleIds"` // Resolved from role_ids
 }
 
-func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest, inviterId uuid.UUID, ttl time.Duration) (*string, error) {
-	// FIX: Calculate the expiration time by adding the duration directly to time.Now()
+func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest, inviterId uuid.UUID, ttl time.Duration) *errors.AppError {
 	expiresAt := time.Now().Add(ttl)
-	// 2. Generate a cryptographically secure short-lived token
+
+	// 1. Generate a cryptographically secure token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
-		return nil, errors.ErrInternalServer.W("failed to generate token", "")
+		return errors.ErrInternalServer.W("failed to generate token", "").Log(ctx, err, true)
 	}
 	token := hex.EncodeToString(tokenBytes)
 
-	// Updated to match your custom NewInvites constructor layout perfectly
 	var invite = entities.NewInvites(
 		user.FirstName,
 		user.MiddleName,
@@ -75,24 +79,41 @@ func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest,
 		user.RoleIDs,
 		"PENDING",
 		inviterId,
-		expiresAt,
+		&expiresAt,
 	)
 
-	// Step 1: Persist the base record to Postgres to generate its unique UUID
+	// STEP 1: Persist base record to database first so the ID definitely exists
 	if err := s.invitesRepo.Create(ctx, invite); err != nil {
-		return nil, errors.ErrInternalServer.W("failed to create system invitation record", "").Log(ctx, err, true)
+		return errors.ErrInternalServer.W("failed to create system invitation record", "").Log(ctx, err, true)
 	}
 
-	// Step 2: Push the token to Redis mapping to the Postgres UUID string
+	// STEP 2: Securely save tracking token to cache
 	redisKey := fmt.Sprintf("invite:token:%s", token)
-
-	// Storing just the string ID allows you to refresh the token independently at any time!
 	err := s.cache.Client.Set(ctx, redisKey, invite.ID.String(), ttl).Err()
 	if err != nil {
-		return nil, errors.ErrInternalServer.W("failed to cache security token session", "").Log(ctx, err, true)
+		return errors.ErrInternalServer.W("failed to cache security token session", "").Log(ctx, err, true)
 	}
 
-	return &token, nil
+	// STEP 3: Now that data is safely saved everywhere, dispatch async background email
+	registrationLink := fmt.Sprintf("http://localhost:3000/register?token=%s", token)
+
+	go func(email, link string) {
+		// Prevent nil pointer panic if mail client failed initializing on app startup
+		if s.emailService == nil {
+			fmt.Println("ASYNC MAIL SKIPPED: Mail service was not initialized properly")
+			return
+		}
+
+		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		mailErr := s.emailService.SendRegistrationLink(bgCtx, email, link)
+		if mailErr != nil {
+			fmt.Printf("ASYNC MAIL FAILURE: failed to deliver registration email: %v\n", mailErr)
+		}
+	}(user.Email, registrationLink)
+
+	return nil
 }
 
 // GetUserByID retrieves a user by ID
@@ -162,4 +183,12 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uuid.UUID, oldP
 	}
 
 	return nil
+}
+
+func (s *UserService) ListInvitations(ctx context.Context) ([]*entities.Invites, error) {
+	invitations, err := s.invitesRepo.List(ctx)
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("Failed to list invitations", "")
+	}
+	return invitations, nil
 }

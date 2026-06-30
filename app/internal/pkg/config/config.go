@@ -11,6 +11,7 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
+	Mail     MailConfig     `mapstructure:"mail"`
 	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	GRPC     GRPCConfig     `mapstructure:"grpc"`
@@ -43,6 +44,14 @@ type RedisConfig struct {
 	Port     int    `mapstructure:"port"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+type MailConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	Email    string `mapstructure:"email"`
 }
 
 type RabbitMQConfig struct {
@@ -115,6 +124,12 @@ func setDefaults() {
 	viper.SetDefault("redis.host", "localhost")
 	viper.SetDefault("redis.port", 6379)
 	viper.SetDefault("redis.db", 0)
+
+	viper.SetDefault("mail.host", "")
+	viper.SetDefault("mail.port", 0)
+	viper.SetDefault("mail.username", "")
+	viper.SetDefault("mail.password", "")
+	viper.SetDefault("mail.email", "")
 
 	// RabbitMQ defaults
 	viper.SetDefault("rabbitmq.host", "localhost")

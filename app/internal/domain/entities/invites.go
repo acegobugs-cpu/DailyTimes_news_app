@@ -13,12 +13,12 @@ type Invites struct {
 	Lname     string     `json:"lastName"`
 	Email     string     `json:"email"`
 	Phone     string     `json:"phone"`
-	RoleIDs   []string   `json:"role_ids"` // Stored as JSONB or text array in DB
-	Status    string     `json:"status"`   // "PENDING", "COMPLETED", "EXPIRED"
+	RoleIDs   []string   `json:"roleIds"` // Stored as JSONB or text array in DB
+	Status    string     `json:"status"`  // "PENDING", "COMPLETED", "EXPIRED"
 	InviterID uuid.UUID  `json:"inviterId"`
-	CreatedAt time.Time  `json:"created_at"`
-	ExpiresAt *time.Time `json:"expires_at"`
-	DeletedAt time.Time  `json:"deleted_at"`
+	CreatedAt time.Time  `json:"createdAt"`
+	ExpiresAt *time.Time `json:"expiresAt"`
+	DeletedAt time.Time  `json:"deletedAt"`
 }
 
 // NewAuthorizedEmail creates a new authorized email entity

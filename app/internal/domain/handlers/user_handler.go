@@ -47,20 +47,12 @@ func (h *UserHandler) Invite(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Delegate ALL storage work to your Service Layer (Postgres + Redis)
 	ttl := 24 * time.Hour
-	token, err := h.userService.SavePendingUser(ctx, req, inviterID, ttl)
+	err := h.userService.SavePendingUser(ctx, req, inviterID, ttl)
 	if err != nil {
 		// The error was built inside the service, pass it back to the client
 		h.handler.RespondError(w, err)
 		return
 	}
-
-	registrationLink := fmt.Sprintf("http://localhost:3000/register?token=%s", *token)
-
-	// Go-routine or asynchronous event dispatch is ideal here so HR doesn't wait on SMTP
-	go func(email, link string) {
-		// h.EmailService.SendRegistrationLink(email, link)
-		fmt.Printf("Simulating Email to %s: Click here to verify: %s\n", email, link)
-	}(req.Email, registrationLink)
 
 	// 6. Respond back to HR acknowledging invitation sent
 	h.handler.RespondJSON(w, http.StatusAccepted, map[string]string{
@@ -94,6 +86,20 @@ func (h *UserHandler) GetPendingRegistration(w http.ResponseWriter, r *http.Requ
 	var pendingUser services.RegisterRequest
 	if err := json.Unmarshal([]byte(val), &pendingUser); err != nil {
 		http.Error(w, "failed to parse registration data", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the data to the user's UI screen (omitting roles if they shouldn't see them)
+	h.handler.RespondJSON(w, http.StatusOK, pendingUser)
+}
+
+func (h *UserHandler) GetInvitationList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// Deserialize JSON back into struct
+	pendingUser, err := h.userService.ListInvitations(ctx)
+	if err != nil {
+		// The error was built inside the service, pass it back to the client
+		h.handler.RespondError(w, err)
 		return
 	}
 

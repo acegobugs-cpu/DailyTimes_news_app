@@ -19,6 +19,7 @@ import (
 	"app/internal/domain/services"
 	"app/internal/infra/caching"
 	"app/internal/infra/database"
+	"app/internal/infra/email"
 	"app/internal/infra/storage"
 	httpInterface "app/internal/interfaces/http"
 	"app/internal/pkg/config"
@@ -52,7 +53,12 @@ func main() {
 		logger.Fatal("Failed to initialize database", zap.Error(err))
 	}
 
-	cache, err := caching.NewRedisCache("localhost:6379", "", 0)
+	mail, err := email.NewEmailService(cfg.Mail.Host, cfg.Mail.Port, cfg.Mail.Username, cfg.Mail.Password, cfg.Mail.Email)
+	if err != nil {
+		logger.Fatal("Failed to initialize Mail", zap.Error(err))
+	}
+
+	cache, err := caching.NewRedisCache(cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.Password, cfg.Redis.DB)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -85,7 +91,7 @@ func main() {
 	}
 
 	// Initialize services
-	userService := services.NewUserService(userRepo, invitesRepo, cache)
+	userService := services.NewUserService(userRepo, invitesRepo, mail, cache)
 	authService := services.NewAuthService(
 		userRepo,
 		cache,
@@ -172,10 +178,17 @@ func GracefulShutdown(ctx context.Context, server *http.Server, db *database.Pos
 
 // seedSuperuser seeds the superadmin user if it doesn't exist
 func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository) error {
-	// Check if superadmin already exists
+	// 1. Check if superadmin already exists by Username
 	existingUser, err := userRepo.FindByUsername(ctx, "root")
 	if err == nil && existingUser != nil {
-		logger.Info("Superadmin user already exists")
+		logger.Info("Superadmin user already exists (matched by username)")
+		return nil
+	}
+
+	// 2. Check if superadmin already exists by Email to prevent unique constraint conflicts
+	existingEmail, err := userRepo.FindByEmail(ctx, "admin@news.com")
+	if err == nil && existingEmail != nil {
+		logger.Info("Superadmin user already exists (matched by email)")
 		return nil
 	}
 
@@ -185,7 +198,7 @@ func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository) e
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// Create superadmin user
+	// Create superadmin user structure
 	superadmin := &entities.User{
 		FirstName:    "Super",
 		LastName:     "Admin",

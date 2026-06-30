@@ -45,7 +45,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 
 func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
 	query := `
-		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
+		SELECT id, fname, lname, uname, email, h_password, created_at
 		FROM users WHERE id = $1
 	`
 	user := &entities.User{}
@@ -70,7 +70,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.
 
 func (r *UserRepository) FindByUID(ctx context.Context, uid string) (*entities.User, error) {
 	query := `
-		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
+		SELECT id, fname, lname, uname, email, h_password, created_at
 		FROM users WHERE uid = $1
 	`
 	user := &entities.User{}
@@ -95,7 +95,7 @@ func (r *UserRepository) FindByUID(ctx context.Context, uid string) (*entities.U
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entities.User, error) {
 	query := `
-		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
+		SELECT id, fname, lname, uname, email, h_password, created_at
 		FROM users WHERE email = $1
 	`
 	user := &entities.User{}
@@ -121,7 +121,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entiti
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*entities.User, error) {
 	query := `
-		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
+		SELECT id, fname, lname, uname, email, h_password, created_at
 		FROM users WHERE uname = $1
 	`
 	user := &entities.User{}
@@ -202,7 +202,7 @@ func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]*entities.User, error) {
 	query := `
-		SELECT id, uid, fname, mname, lname, uname, email, h_password, is_superuser, created_at
+		SELECT id, fname, lname, uname, email, h_password, created_at
 		FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2
 	`
 	rows, err := r.db.Query(ctx, query, limit, offset)

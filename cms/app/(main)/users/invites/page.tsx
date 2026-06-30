@@ -1,7 +1,7 @@
 'use client';
 
 import { apiClient } from "@/app/lib/api";
-import { Email } from "@/app/types/types";
+import { Invite } from "@/app/types/types";
 import { useEffect, useState } from "react";
 
 const Roles = [
@@ -23,14 +23,14 @@ export default function EmailList() {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [slug, setSlug] = useState("");
-  const [emails, setEmails] = useState<Email[]>([]);
+  const [Invites, setInvites] = useState<Invite[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchEmails = async () => {
     try {
-      const emailsData = await apiClient.getInvites();
-      setEmails(emailsData);
+      const invitesData = await apiClient.getInvites();
+      setInvites(invitesData.data);
     } catch {
       setError("Failed to fetch emails");
     }
@@ -70,7 +70,7 @@ export default function EmailList() {
     try {
       // Sending payload matching your backend expectations
       const res = await apiClient.invite(formData);
-      setSlug(res.slug);
+      setSlug(res.id);
       setSuccess("Email authorized successfully.");
       
       // Reset form fields completely
@@ -90,11 +90,11 @@ export default function EmailList() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this email?")) {
       try {
         await apiClient.deleteEmails(id);
-        setEmails((prev) => prev.filter((email) => email.id !== id));
+        setInvites((prev) => prev.filter((email) => email.id !== id));
       } catch {
         setError("Failed to delete email");
       }
@@ -143,8 +143,7 @@ export default function EmailList() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/70 border-b border-gray-100 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                <th className="p-4 pl-6">ID</th>
-                <th className="p-4">Slug</th>
+                <th className="p-4">Name</th>
                 <th className="p-4">Email Address</th>
                 <th className="p-4">Inviter ID</th>
                 <th className="p-4 text-center">Status</th>
@@ -152,23 +151,17 @@ export default function EmailList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm text-gray-600">
-              {emails.length ? (
-                emails.map((e) => (
+              {Invites.length ? (
+                Invites.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="p-4 pl-6 font-mono text-xs text-gray-400">#{e.id}</td>
-                    <td className="p-4 font-mono text-xs max-w-[120px] truncate text-gray-500">{e.slug}</td>
+                    <td className="p-4 font-mono text-xs max-w-[120px] truncate text-gray-500">{e.firstName + " " + e.middleName + " " + e.lastName}</td>
                     <td className="p-4 font-medium text-gray-900">{e.email}</td>
-                    <td className="p-4 text-gray-500">{e.inviter_id || <span className="text-gray-300">—</span>}</td>
+                    <td className="p-4 text-gray-500">{e.inviterId || <span className="text-gray-300">—</span>}</td>
                     <td className="p-4 text-center">
-                      {e.used ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
-                          Registered
-                        </span>
-                      ) : (
+                     
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                          Pending
+                          {e.status}
                         </span>
-                      )}
                     </td>
                     <td className="p-4 pr-6 text-right">
                       <button

@@ -2,6 +2,8 @@ package caching
 
 import (
 	"context"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -12,9 +14,9 @@ type RedisCache struct {
 }
 
 // Pass configuration dynamically, return the wrapper and an error gracefully
-func NewRedisCache(addr string, password string, db int) (*RedisCache, error) {
+func NewRedisCache(host string, port int, password string, db int) (*RedisCache, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         addr,
+		Addr:         net.JoinHostPort(host, strconv.Itoa(port)),
 		Password:     password,
 		DB:           db,
 		DialTimeout:  5 * time.Second,
