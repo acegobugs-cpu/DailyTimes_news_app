@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"app/internal/domain/services"
+	"app/internal/pkg/config"
 	"app/internal/pkg/errors"
 
 	"github.com/google/uuid"
@@ -16,13 +17,15 @@ import (
 type AuthHandler struct {
 	handler     *Handler
 	authService *services.AuthService
+	config      *config.Config
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+func NewAuthHandler(authService *services.AuthService, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		handler:     NewHandler(),
 		authService: authService,
+		config:      cfg,
 	}
 }
 
@@ -51,6 +54,24 @@ type UserResponse struct {
 	ID       uuid.UUID `json:"id"`
 	Username string    `json:"username"`
 	Email    string    `json:"email"`
+}
+
+func (h *AuthHandler) GetPendingInvitation(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, "token is required", http.StatusBadRequest)
+		return
+	}
+
+	res, err := h.authService.VerifyInvitation(ctx, token)
+	if err != nil {
+		h.handler.RespondError(w, err)
+		return
+	}
+
+	// Return the data to the user's UI screen (omitting roles if they shouldn't see them)
+	h.handler.RespondJSON(w, http.StatusOK, res)
 }
 
 // Register handles user registration
@@ -204,22 +225,38 @@ func (h *AuthHandler) VerifyToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) readUserIP(r *http.Request) string {
-	// Check if a proxy forwarded the real user IP
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// X-Forwarded-For can be a comma-separated list if it passed through multiple proxies.
-		// The first IP in the list is always the original client.
-		parts := strings.Split(xff, ",")
-		return strings.TrimSpace(parts[0])
-	}
-
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
-	}
-
-	// Fallback to RemoteAddr if no proxy header exists (e.g., local development)
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	// Get the direct connection IP
+	directIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		directIP = r.RemoteAddr
 	}
-	return ip
+
+	// Check if the direct IP is a trusted proxy
+	isTrusted := h.config.IsTrustedProxy(directIP)
+
+	// Only trust X-Forwarded-For if the request comes from a trusted proxy
+	if isTrusted {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			for i := len(parts) - 1; i >= 0; i-- {
+				candidate := strings.TrimSpace(parts[i])
+				ip := net.ParseIP(candidate)
+				if ip == nil {
+					continue
+				}
+				if !h.config.IsTrustedProxy(ip.String()) {
+					return ip.String()
+				}
+			}
+		}
+
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			if ip := net.ParseIP(strings.TrimSpace(xri)); ip != nil {
+				return ip.String()
+			}
+		}
+	}
+
+	// Fallback to direct IP if not from trusted proxy or no proxy headers
+	return directIP
 }

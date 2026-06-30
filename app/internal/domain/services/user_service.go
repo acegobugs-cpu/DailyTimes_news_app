@@ -14,7 +14,9 @@ import (
 	"app/internal/domain/repositories"
 	"app/internal/infra/caching"
 	"app/internal/infra/email"
+	"app/internal/pkg/config"
 	"app/internal/pkg/errors"
+	"app/internal/pkg/validator"
 )
 
 // UserService handles user business logic
@@ -23,15 +25,19 @@ type UserService struct {
 	invitesRepo  *repositories.InvitesRepository
 	emailService *email.EmailService
 	cache        *caching.RedisCache
+	config       *config.Config
+	validator    *validator.Validator
 }
 
 // NewUserService creates a new user service
-func NewUserService(userRepo *repositories.UserRepository, invitesRepo *repositories.InvitesRepository, emailService *email.EmailService, cache *caching.RedisCache) *UserService {
+func NewUserService(userRepo *repositories.UserRepository, invitesRepo *repositories.InvitesRepository, emailService *email.EmailService, cache *caching.RedisCache, cfg *config.Config) *UserService {
 	return &UserService{
 		userRepo:     userRepo,
 		invitesRepo:  invitesRepo,
 		emailService: emailService,
 		cache:        cache,
+		config:       cfg,
+		validator:    validator.NewValidator(cfg),
 	}
 }
 
@@ -60,7 +66,30 @@ type RegisterResponse struct {
 	RoleIDs []string `json:"roleIds"` // Resolved from role_ids
 }
 
-func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest, inviterId uuid.UUID, ttl time.Duration) *errors.AppError {
+func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest, inviterId uuid.UUID) *errors.AppError {
+	// Validate input
+	if err := s.validator.ValidateName(user.FirstName); err != nil {
+		return errors.ErrInvalidInput.W("Invalid first name", err.Error())
+	}
+	if user.MiddleName != "" {
+		if err := s.validator.ValidateName(user.MiddleName); err != nil {
+			return errors.ErrInvalidInput.W("Invalid middle name", err.Error())
+		}
+	}
+	if err := s.validator.ValidateName(user.LastName); err != nil {
+		return errors.ErrInvalidInput.W("Invalid last name", err.Error())
+	}
+	if err := s.validator.ValidateEmail(user.Email); err != nil {
+		return errors.ErrInvalidInput.W("Invalid email", err.Error())
+	}
+	if err := s.validator.ValidatePhone(user.Phone); err != nil {
+		return errors.ErrInvalidInput.W("Invalid phone number", err.Error())
+	}
+	if err := s.validator.ValidateRoleIDs(user.RoleIDs); err != nil {
+		return errors.ErrInvalidInput.W("Invalid role IDs", err.Error())
+	}
+
+	ttl := s.config.Auth.InvitationTTL
 	expiresAt := time.Now().Add(ttl)
 
 	// 1. Generate a cryptographically secure token
@@ -95,7 +124,7 @@ func (s *UserService) SavePendingUser(ctx context.Context, user RegisterRequest,
 	}
 
 	// STEP 3: Now that data is safely saved everywhere, dispatch async background email
-	registrationLink := fmt.Sprintf("http://localhost:3000/register?token=%s", token)
+	registrationLink := fmt.Sprintf("%s/register?token=%s", s.config.Auth.FrontendURL, token)
 
 	go func(email, link string) {
 		// Prevent nil pointer panic if mail client failed initializing on app startup
@@ -161,6 +190,11 @@ func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]*enti
 
 // ChangePassword changes a user's password
 func (s *UserService) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error {
+	// Validate new password
+	if err := s.validator.ValidatePassword(newPassword); err != nil {
+		return errors.ErrInvalidInput.W("Invalid password", err.Error())
+	}
+
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return errors.ErrResourceNotFound
@@ -171,8 +205,8 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uuid.UUID, oldP
 		return errors.ErrInvalidCredentials
 	}
 
-	// Hash new password
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	// Hash new password using configured bcrypt cost
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), s.config.Security.BcryptCost)
 	if err != nil {
 		return errors.ErrInternalServer.W("Failed to hash password", "")
 	}

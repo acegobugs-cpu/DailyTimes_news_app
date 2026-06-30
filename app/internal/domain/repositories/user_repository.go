@@ -127,7 +127,6 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, username).Scan(
 		&user.ID,
-
 		&user.FirstName,
 		&user.LastName,
 		&user.Username,

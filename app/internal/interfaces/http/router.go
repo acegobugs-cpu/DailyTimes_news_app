@@ -76,8 +76,8 @@ func (r *Router) setupMiddleware() {
 	})
 	r.router.Use(corsMiddleware.Handler)
 
-	// Rate limiting
-	r.router.Use(httprate.LimitByIP(100, 1*time.Minute))
+	// Rate limiting - use configured global rate limit
+	r.router.Use(httprate.LimitByIP(r.config.RateLimit.GlobalRequestsPerMinute, 1*time.Minute))
 }
 
 // setupRoutes sets up application routes
@@ -86,12 +86,13 @@ func (r *Router) setupRoutes() {
 		// Health check
 		router.Get("/health", r.healthCheck)
 
-		// Auth routes
-		router.With(httprate.LimitByIP(10, 1*time.Minute)).Route("/auth", func(router chi.Router) {
+		// Auth routes with per-endpoint rate limiting
+		router.With(httprate.LimitByIP(r.config.RateLimit.AuthRequestsPerMinute, 1*time.Minute)).Route("/auth", func(router chi.Router) {
+			router.With(httprate.LimitByIP(r.config.RateLimit.LoginRequestsPerMinute, 1*time.Minute)).Post("/login", r.authHandler.Login)
+			router.With(httprate.LimitByIP(r.config.RateLimit.RefreshRequestsPerMinute, 1*time.Minute)).Post("/refresh", r.authHandler.RefreshToken)
+			router.With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Get("/register", r.authHandler.GetPendingInvitation)
 			router.Post("/signin", r.authHandler.Signin)
-			router.Post("/login", r.authHandler.Login)
 			router.Get("/me", r.authHandler.Me)
-			router.Post("/refresh", r.authHandler.RefreshToken)
 			router.Post("/logout", r.authHandler.Logout)
 			router.Post("/logout-all", r.authHandler.LogoutAll)
 			router.Post("/verify", r.authHandler.VerifyToken)

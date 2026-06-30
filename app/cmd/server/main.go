@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"net/http"
@@ -63,15 +64,8 @@ func main() {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
-	s3Endpoint := "http://localhost:4566"
-	bucketName := "media-bucket"
-	region := "us-east-1"
-
-	maxFileSize := int64(64 * 1024 * 1024) // 64MB
-	publicURL := "http://localhost:4566/" + bucketName
-
-	// 2. Initialize S3 adapter client
-	storageSvc, err := storage.NewS3Storage(ctx, s3Endpoint, bucketName, region)
+	// Initialize storage service using config
+	storageSvc, err := storage.NewS3Storage(ctx, cfg.Storage.Endpoint, cfg.Storage.BucketName, cfg.Storage.Region)
 	if err != nil {
 		logger.Fatal("unable to load SDK config, %v", zap.Error(err))
 	}
@@ -86,28 +80,21 @@ func main() {
 	mediaRepo := repositories.NewMediaRepository(db)
 
 	// Seed superadmin user
-	if err := seedSuperuser(context.Background(), userRepo); err != nil {
+	if err := seedSuperuser(context.Background(), userRepo, cfg); err != nil {
 		logger.Warn("Failed to seed superuser", zap.Error(err))
 	}
 
 	// Initialize services
-	userService := services.NewUserService(userRepo, invitesRepo, mail, cache)
-	authService := services.NewAuthService(
-		userRepo,
-		cache,
-		cfg.JWT.Secret,
-		cfg.JWT.AccessDuration,
-		cfg.JWT.RefreshDuration,
-		cfg.JWT.Issuer,
-	)
+	userService := services.NewUserService(userRepo, invitesRepo, mail, cache, cfg)
+	authService := services.NewAuthService(userRepo, invitesRepo, cache, cfg)
 	articleService := services.NewArticleService(articleRepo, categoryRepo)
 	categoryService := services.NewCategoryService(categoryRepo)
 	authEmailService := services.NewAuthorizedEmailService(authEmailRepo, userRepo)
-	mediaService := services.NewMediaService(mediaRepo, storageSvc, maxFileSize, publicURL)
+	mediaService := services.NewMediaService(mediaRepo, storageSvc, cfg.Storage.MaxFileSize, cfg.Storage.PublicURL)
 
 	// Initialize HTTP handlers
-	userHandler := handlers.NewUserHandler(userService, cache)
-	authHandler := handlers.NewAuthHandler(authService)
+	userHandler := handlers.NewUserHandler(userService)
+	authHandler := handlers.NewAuthHandler(authService, cfg)
 	articleHandler := handlers.NewArticleHandler(articleService)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 	authEmailHandler := handlers.NewAuthorizedEmailHandler(authEmailService)
@@ -177,7 +164,7 @@ func GracefulShutdown(ctx context.Context, server *http.Server, db *database.Pos
 }
 
 // seedSuperuser seeds the superadmin user if it doesn't exist
-func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository) error {
+func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository, cfg *config.Config) error {
 	// 1. Check if superadmin already exists by Username
 	existingUser, err := userRepo.FindByUsername(ctx, "root")
 	if err == nil && existingUser != nil {
@@ -192,8 +179,18 @@ func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository) e
 		return nil
 	}
 
-	// Hash password
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	// Get superadmin password from environment variable or generate secure password
+	superadminPassword := os.Getenv("SUPERADMIN_PASSWORD")
+	if superadminPassword == "" {
+		// Generate secure random password
+		superadminPassword, err := generateSecurePassword(16)
+		if err != nil {
+			logger.Warn("SUPERADMIN_PASSWORD not set, generated random password", zap.String("password", superadminPassword))
+		}
+	}
+
+	// Hash password using configured bcrypt cost
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(superadminPassword), cfg.Security.BcryptCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
@@ -217,4 +214,17 @@ func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository) e
 	)
 
 	return nil
+}
+
+// generateSecurePassword generates a cryptographically secure random password
+func generateSecurePassword(length int) (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate secure password: %w", err)
+	}
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b), nil
 }

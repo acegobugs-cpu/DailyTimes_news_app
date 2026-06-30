@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"app/internal/domain/handlers"
 	"app/internal/domain/repositories"
 	"app/internal/domain/services"
+	"app/internal/infra/caching"
 	"app/internal/infra/database"
 	"app/internal/pkg/config"
 
@@ -37,7 +37,7 @@ func TestRegister_Integration(t *testing.T) {
 	}
 	migrationDB.Close()
 	// 1. Build the config pointing to your test database
-	cfg := &config.DatabaseConfig{
+	dbcfg := &config.DatabaseConfig{
 		Host:            "localhost",
 		Port:            5432,
 		User:            "postgres",
@@ -50,7 +50,7 @@ func TestRegister_Integration(t *testing.T) {
 	}
 
 	// 2. Use your actual constructor to initialize the database wrapper
-	pgDb, err := database.NewPostgres(cfg)
+	pgDb, err := database.NewPostgres(dbcfg)
 	if err != nil {
 		t.Fatalf("Failed to connect to test DB pool: %v", err)
 	}
@@ -59,8 +59,9 @@ func TestRegister_Integration(t *testing.T) {
 
 	// 3. Wire up your components exactly like before
 	userRepo := repositories.NewUserRepository(pgDb)
-	authService := services.NewAuthService(userRepo, nil, "super-secret-key", time.Hour, time.Hour*24, "my-app")
-	authHandler := handlers.NewAuthHandler(authService)
+	invitesRepo := repositories.NewInvitesRepository(pgDb)
+	authService := services.NewAuthService(userRepo, invitesRepo, &caching.RedisCache{}, &config.Config{})
+	authHandler := handlers.NewAuthHandler(authService, &config.Config{})
 
 	// 4. Truncate tables using your wrapper's Exec method
 	ctx := context.Background()

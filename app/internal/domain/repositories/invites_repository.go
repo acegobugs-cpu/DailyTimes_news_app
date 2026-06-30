@@ -6,6 +6,9 @@ import (
 	"app/internal/pkg/errors"
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type InvitesRepository struct {
@@ -77,4 +80,29 @@ func (r *InvitesRepository) List(ctx context.Context) ([]*entities.Invites, erro
 	}
 
 	return invites, nil
+}
+
+func (r *InvitesRepository) GetInviteByID(ctx context.Context, id uuid.UUID) (*entities.Invites, error) {
+	query := `
+		SELECT id, fname, mname, lname, email, phone
+		FROM invites where id = $1 ORDER BY created_at DESC
+	`
+
+	invite := &entities.Invites{}
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&invite.ID,
+		&invite.Fname,
+		&invite.Mname,
+		&invite.Lname,
+		&invite.Email,
+		&invite.Phone,
+	)
+	if err == pgx.ErrNoRows {
+		return nil, errors.ErrResourceNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan invites: %w", err)
+	}
+
+	return invite, nil
 }

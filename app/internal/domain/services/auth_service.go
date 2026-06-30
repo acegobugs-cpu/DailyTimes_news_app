@@ -2,11 +2,15 @@ package services
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,14 +21,19 @@ import (
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/infra/caching"
+	"app/internal/pkg/config"
 	"app/internal/pkg/errors"
 	"app/internal/pkg/logger"
+	"app/internal/pkg/validator"
 )
 
 // AuthService handles authentication business logic
 type AuthService struct {
 	userRepo        *repositories.UserRepository
+	inviteRepo      *repositories.InvitesRepository
 	cache           *caching.RedisCache
+	config          *config.Config
+	validator       *validator.Validator
 	jwtSecret       string
 	accessDuration  time.Duration
 	refreshDuration time.Duration
@@ -34,19 +43,20 @@ type AuthService struct {
 // NewAuthService creates a new auth service
 func NewAuthService(
 	userRepo *repositories.UserRepository,
+	inviteRepo *repositories.InvitesRepository,
 	cache *caching.RedisCache,
-	jwtSecret string,
-	accessDuration time.Duration,
-	refreshDuration time.Duration,
-	issuer string,
+	cfg *config.Config,
 ) *AuthService {
 	return &AuthService{
 		userRepo:        userRepo,
+		inviteRepo:      inviteRepo,
 		cache:           cache,
-		jwtSecret:       jwtSecret,
-		accessDuration:  accessDuration,
-		refreshDuration: refreshDuration,
-		issuer:          issuer,
+		config:          cfg,
+		validator:       validator.NewValidator(cfg),
+		jwtSecret:       cfg.GetJWTSecret(),
+		accessDuration:  cfg.JWT.AccessDuration,
+		refreshDuration: cfg.JWT.RefreshDuration,
+		issuer:          cfg.JWT.Issuer,
 	}
 }
 
@@ -62,11 +72,65 @@ type Claims struct {
 	UserID   uuid.UUID `json:"user_id"`
 	Username string    `json:"username"`
 	Email    string    `json:"email"`
+	JTI      string    `json:"jti"` // Unique token ID for blacklisting
+	Version  string    `json:"ver"` // Token version
+	Audience string    `json:"aud"`
 	jwt.RegisteredClaims
+}
+
+func (s *AuthService) VerifyInvitation(ctx context.Context, token string) (*entities.Invites, error) {
+
+	redisKey := fmt.Sprintf("registration:token:%s", token)
+
+	// Fetch from Redis
+	val, err := s.cache.Client.Get(ctx, redisKey).Result()
+	if err == redis.Nil {
+		// Token doesn't exist or expired
+		return nil, errors.ErrNotFound.W("invalid or expired registration link", "")
+
+	} else if err != nil {
+		return nil, errors.ErrInternalServer.W("database error", "")
+
+	}
+
+	inviteUUID, err := uuid.Parse(val)
+	if err != nil {
+		return nil, errors.ErrInvalidToken
+
+	}
+
+	// 2. Fetch the up-to-date, complete profile data from the Postgres Database
+	inviteRecord, err := s.inviteRepo.GetInviteByID(ctx, inviteUUID)
+	if err != nil {
+		return nil, errors.ErrInternalServer
+
+	}
+
+	return inviteRecord, nil
 }
 
 // Register registers a new user
 func (s *AuthService) Signin(ctx context.Context, firstName, lastName, username, email, Phone, password string) (*entities.User, error) {
+	// Validate input
+	if err := s.validator.ValidateName(firstName); err != nil {
+		return nil, errors.ErrInvalidInput.W("Invalid first name", err.Error())
+	}
+	if err := s.validator.ValidateName(lastName); err != nil {
+		return nil, errors.ErrInvalidInput.W("Invalid last name", err.Error())
+	}
+	if err := s.validator.ValidateUsername(username); err != nil {
+		return nil, errors.ErrInvalidInput.W("Invalid username", err.Error())
+	}
+	if err := s.validator.ValidateEmail(email); err != nil {
+		return nil, errors.ErrInvalidInput.W("Invalid email", err.Error())
+	}
+	if err := s.validator.ValidatePhone(Phone); err != nil {
+		return nil, errors.ErrInvalidInput.W("Invalid phone number", err.Error())
+	}
+	if err := s.validator.ValidatePassword(password); err != nil {
+		return nil, errors.ErrInvalidInput.W("Invalid password", err.Error())
+	}
+
 	// Check if email already exists
 	exists, err := s.userRepo.ExistsByEmail(ctx, email)
 	if err != nil {
@@ -85,8 +149,8 @@ func (s *AuthService) Signin(ctx context.Context, firstName, lastName, username,
 		return nil, errors.ErrUserExists
 	}
 
-	// Hash password
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// Hash password using configured bcrypt cost
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), s.config.Security.BcryptCost)
 	if err != nil {
 		return nil, errors.ErrInternalServer.W("Failed to hash password", "")
 	}
@@ -103,23 +167,82 @@ func (s *AuthService) Signin(ctx context.Context, firstName, lastName, username,
 
 // Login authenticates a user
 func (s *AuthService) Login(ctx context.Context, emailOrUsername, password, ipAddress, userAgent string) (*entities.User, *TokenPair, error) {
+	// Check account lockout
+	attemptsKey := fmt.Sprintf("login:attempts:%s", emailOrUsername)
+	lockoutKey := fmt.Sprintf("login:lockout:%s", emailOrUsername)
+
+	// If a lockout key exists, immediately reject
+	if exists, _ := s.cache.Client.Exists(ctx, lockoutKey).Result(); exists == 1 {
+		return nil, nil, errors.ErrInvalidCredentials.W("Account locked due to too many failed attempts", "")
+	}
+
+	// Otherwise, check the attempts counter (if present)
+	attempts, err := s.cache.Client.Get(ctx, attemptsKey).Int()
+	if err == nil && attempts >= s.config.Auth.MaxLoginAttempts {
+		// Ensure lockout key is set atomically-ish when threshold already exceeded
+		_ = s.cache.Client.Set(ctx, lockoutKey, "1", s.config.Auth.LockoutDuration).Err()
+		s.cache.Client.Del(ctx, attemptsKey)
+		return nil, nil, errors.ErrInvalidCredentials.W("Account locked due to too many failed attempts", "")
+	}
+
 	user, err := s.userRepo.FindByEmailOrUsername(ctx, emailOrUsername)
 	if err != nil {
-		return nil, nil, errors.ErrInvalidCredentials.W("email or uname not found", "")
+		// Increment failed attempt counter
+		s.incrementFailedAttempt(ctx, attemptsKey)
+		return nil, nil, errors.ErrInvalidCredentials.W("email or username not found", "")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		// Increment failed attempt counter
+		s.incrementFailedAttempt(ctx, attemptsKey)
 		return nil, nil, errors.ErrInvalidCredentials
 	}
 
-	// 2. Pass them into the token generator
+	// Clear failed attempts and any lockout on successful login
+	s.cache.Client.Del(ctx, attemptsKey)
+	s.cache.Client.Del(ctx, lockoutKey)
+
+	// Generate tokens
 	tokens, err := s.GenerateTokenPair(ctx, user, ipAddress, userAgent)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// 3. Correctly return the tokens
 	return user, tokens, nil
+}
+
+// incrementFailedAttempt increments the failed login attempt counter
+// and creates a separate lockout key when the threshold is reached.
+func (s *AuthService) incrementFailedAttempt(ctx context.Context, key string) {
+	attempts, err := s.cache.Client.Incr(ctx, key).Result()
+	if err != nil {
+		logger.LogError(ctx, err, "failed to increment login attempts")
+		return
+	}
+
+	// Define a short attempt window separate from the lockout duration.
+	// This keeps the counter rolling within a small window (e.g. 5 minutes).
+	attemptWindow := 5 * time.Minute
+
+	if attempts == 1 {
+		if err := s.cache.Client.Expire(ctx, key, attemptWindow).Err(); err != nil {
+			// If EXPIRE fails, remove the key to avoid leaving a persistent counter.
+			logger.LogError(ctx, err, "failed to set TTL on attempts key; deleting to avoid non-expiring key")
+			_ = s.cache.Client.Del(ctx, key).Err()
+			return
+		}
+	}
+
+	// If threshold reached, set an explicit lockout key with the configured lockout duration
+	if attempts >= int64(s.config.Auth.MaxLoginAttempts) {
+		lockoutKey := strings.Replace(key, "attempts", "lockout", 1)
+		if err := s.cache.Client.Set(ctx, lockoutKey, "1", s.config.Auth.LockoutDuration).Err(); err != nil {
+			logger.LogError(ctx, err, "failed to set lockout key")
+			return
+		}
+		// Remove the rolling attempts counter to avoid confusion
+		_ = s.cache.Client.Del(ctx, key).Err()
+	}
 }
 
 func (s *AuthService) Me(ctx context.Context, accessToken string) (*entities.User, error) {
@@ -218,13 +341,18 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString
 	// =============================
 
 	// Step 4: Safely generate Access JWT now that Redis state guarantees integrity
+	tokenJTI := uuid.New().String()
 	accessClaims := &Claims{
 		UserID:   user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		JTI:      tokenJTI,
+		Version:  "1.0",
+		Audience: s.issuer,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    s.issuer,
 		},
 	}
@@ -256,6 +384,10 @@ func (s *AuthService) ValidateAccessToken(tokenString string) (*Claims, error) {
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		// Check if token is blacklisted
+		if s.IsTokenBlacklisted(tokenString, claims.JTI) {
+			return nil, errors.ErrInvalidToken.W("Token has been revoked", "")
+		}
 		return claims, nil
 	}
 
@@ -319,16 +451,51 @@ func (s *AuthService) LogoutAll(ctx context.Context, userID uuid.UUID) error {
 	return nil
 }
 
+// BlacklistToken adds an access token to the blacklist
+func (s *AuthService) BlacklistToken(ctx context.Context, tokenString string, jti string, expiration time.Duration) error {
+	blacklistKey := fmt.Sprintf("blacklist:token:%s", jti)
+	err := s.cache.Client.Set(ctx, blacklistKey, tokenString, expiration).Err()
+	if err != nil {
+		return errors.ErrInternalServer.W("Failed to blacklist token", "").Log(ctx, err, true)
+	}
+	return nil
+}
+
+// IsTokenBlacklisted checks if a token is blacklisted
+func (s *AuthService) IsTokenBlacklisted(tokenString, jti string) bool {
+	blacklistKey := fmt.Sprintf("blacklist:token:%s", jti)
+	_, err := s.cache.Client.Get(context.Background(), blacklistKey).Result()
+	return err == nil
+}
+
+// RevokeUserTokens revokes all access tokens for a user by blacklisting their current tokens
+// Note: This requires tracking issued tokens or using a different strategy
+func (s *AuthService) RevokeUserTokens(ctx context.Context, userID uuid.UUID) error {
+	// This would require maintaining a list of active token JTIs per user
+	// For now, we can use a user-specific blacklist key
+	blacklistKey := fmt.Sprintf("blacklist:user:%s", userID.String())
+	err := s.cache.Client.Set(ctx, blacklistKey, "revoked", s.accessDuration).Err()
+	if err != nil {
+		return errors.ErrInternalServer.W("Failed to revoke user tokens", "").Log(ctx, err, true)
+	}
+	return nil
+}
+
 // GenerateTokenPair generates access and refresh tokens
 func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User, ipAddress, userAgent string) (*TokenPair, error) {
-	// 1. Generate access token
+	// 1. Generate access token with enhanced claims
+	tokenJTI := uuid.New().String()
 	accessClaims := &Claims{
 		UserID:   user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		JTI:      tokenJTI,
+		Version:  "1.0",
+		Audience: s.issuer,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    s.issuer,
 		},
 	}
@@ -358,8 +525,14 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User
 		return nil, errors.ErrInternalServer.W("failed to serialize session data", "")
 	}
 
-	// Pass the marshaled data string directly to your cache
-	err = s.cache.Client.Set(ctx, redisKey, string(jsonData), s.refreshDuration).Err()
+	// Encrypt the refresh token data before storing in Redis
+	encryptedData, err := encryptData(s.config.GetEncryptionKey(), jsonData)
+	if err != nil {
+		return nil, errors.ErrInternalServer.W("failed to encrypt refresh token data", "")
+	}
+
+	// Pass the encrypted data string directly to your cache
+	err = s.cache.Client.Set(ctx, redisKey, string(encryptedData), s.refreshDuration).Err()
 	if err != nil {
 		// Fixed context typo error message to say "refresh session" instead of "registration session"
 		return nil, errors.ErrInternalServer.W("failed to save refresh session", "")
@@ -386,4 +559,51 @@ func hashToken(token string) string {
 	h := sha256.New()
 	h.Write([]byte(token))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// encryptData encrypts data using AES-256-GCM
+func encryptData(key []byte, plaintext []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+	return ciphertext, nil
+}
+
+// decryptData decrypts data using AES-256-GCM
+func decryptData(key []byte, ciphertext []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
 }

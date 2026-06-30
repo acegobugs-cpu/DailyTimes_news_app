@@ -49,8 +49,7 @@ export default function Panel() {
         { name: "Upload", href: "/files/upload" },
       ],
     },
-    ...(user?.is_superuser
-      ? [
+    
           {
             label: "Users",
             links: [
@@ -58,8 +57,7 @@ export default function Panel() {
               { name: "Permissions", href: "/users/permissions" },
             ],
           },
-        ]
-      : []),
+        
   ];
 
   return (
