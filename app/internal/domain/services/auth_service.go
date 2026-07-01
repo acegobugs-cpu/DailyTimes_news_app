@@ -16,12 +16,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/infra/caching"
 	"app/internal/pkg/config"
+	"app/internal/pkg/crypto"
 	"app/internal/pkg/errors"
 	"app/internal/pkg/logger"
 	"app/internal/pkg/validator"
@@ -195,7 +197,7 @@ func (s *AuthService) Login(ctx context.Context, emailOrUsername, password, ipAd
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		// Increment failed attempt counter
 		s.incrementFailedAttempt(ctx, attemptsKey)
-		return nil, nil, errors.ErrInvalidCredentials
+		return nil, nil, errors.ErrInvalidCredentials.Log(ctx, err, true)
 	}
 
 	// Clear failed attempts and any lockout on successful login
@@ -295,8 +297,19 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString
 		return nil, errors.ErrInvalidToken
 	}
 
+	// Decrypt the refresh token data if encryption is enabled
+	decryptedData := jsonData
+	if s.config.Security.EncryptionKey != "" {
+		decryptedData, err = crypto.Decrypt(jsonData)
+		if err != nil {
+			logger.Error("Failed to decrypt refresh token data", zap.Error(err))
+			// If decryption fails, the token might be corrupted or from before encryption
+			return nil, errors.ErrInvalidToken
+		}
+	}
+
 	var currentSession entities.RefreshToken
-	if err := json.Unmarshal([]byte(jsonData), &currentSession); err != nil {
+	if err := json.Unmarshal([]byte(decryptedData), &currentSession); err != nil {
 		return nil, errors.ErrInternalServer.W("Failed to read cached token structure", "").Log(ctx, err, true)
 	}
 
@@ -325,12 +338,21 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenString
 		return nil, errors.ErrInternalServer.W("Failed to serialize rotated session data", "").Log(ctx, err, true)
 	}
 
+	// Encrypt the new refresh token data before storing
+	encryptedNewData := string(newJsonData)
+	if s.config.Security.EncryptionKey != "" {
+		encryptedNewData, err = crypto.Encrypt(string(newJsonData))
+		if err != nil {
+			return nil, errors.ErrInternalServer.W("Failed to encrypt rotated refresh token data", "").Log(ctx, err, true)
+		}
+	}
+
 	// === ATOMIC EXECUTION STEP ===
 	// Keys mapped to Lua: KEYS[1] = oldRedisKey, KEYS[2] = newRedisKey
 	// Args mapped to Lua: ARGV[1] = string representation, ARGV[2] = TTL integer in seconds
 	ttlSeconds := int(s.refreshDuration.Seconds())
 
-	_, err = rotateTokenLua.Run(ctx, s.cache.Client, []string{oldRedisKey, newRedisKey}, string(newJsonData), ttlSeconds).Result()
+	_, err = rotateTokenLua.Run(ctx, s.cache.Client, []string{oldRedisKey, newRedisKey}, encryptedNewData, ttlSeconds).Result()
 	if err != nil {
 		// If another concurrent request already completed this, Lua will fail or return an error string
 		if err.Error() == "OLD_TOKEN_NOT_FOUND" {
@@ -526,13 +548,18 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *entities.User
 	}
 
 	// Encrypt the refresh token data before storing in Redis
-	encryptedData, err := encryptData(s.config.GetEncryptionKey(), jsonData)
-	if err != nil {
-		return nil, errors.ErrInternalServer.W("failed to encrypt refresh token data", "")
+	encryptedData := string(jsonData)
+	if s.config.Security.EncryptionKey != "" {
+		encryptedData, err = crypto.Encrypt(string(jsonData))
+		if err != nil {
+			logger.Error("Failed to encrypt refresh token data", zap.Error(err))
+			// Fall back to unencrypted if encryption fails
+			encryptedData = string(jsonData)
+		}
 	}
 
 	// Pass the encrypted data string directly to your cache
-	err = s.cache.Client.Set(ctx, redisKey, string(encryptedData), s.refreshDuration).Err()
+	err = s.cache.Client.Set(ctx, redisKey, encryptedData, s.refreshDuration).Err()
 	if err != nil {
 		// Fixed context typo error message to say "refresh session" instead of "registration session"
 		return nil, errors.ErrInternalServer.W("failed to save refresh session", "")

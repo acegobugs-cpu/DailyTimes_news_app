@@ -8,7 +8,6 @@ export async function refreshAccessToken() {
     if (!res.ok) return null;
 
     const data = await res.json();
-    console.log("/refresh", data);
     return data.user || null;
   } catch (err) {
     console.error("Refresh failed:", err);

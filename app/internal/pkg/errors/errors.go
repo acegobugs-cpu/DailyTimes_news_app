@@ -92,6 +92,13 @@ func (e *AppError) GetStatusCode() int {
 	return e.HTTPStatus
 }
 
+// Respond writes the error as JSON to the HTTP response writer
+// func (e *AppError) Respond(w http.ResponseWriter) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(e.GetStatusCode())
+// 	json.NewEncoder(w).Encode(e)
+// }
+
 // IsAppError checks if an error is an AppError
 func IsAppError(err error) bool {
 	_, ok := err.(*AppError)

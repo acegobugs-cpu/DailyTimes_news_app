@@ -26,7 +26,6 @@ function UploadsEditor() {
     const fetchFiles = async () => {
       try {
         const response = await apiClient.getMedia(); // This should return {files: string[]}
-        console.log("Fetched media response:", response);
 
         // Convert the array of URLs to objects
         const filesWithMetadata = response.files.map((fileUrl: string) => {
@@ -91,7 +90,6 @@ function UploadsEditor() {
         const filename = fileUrl.split("/").pop();
         if (filename) {
           await apiClient.delMedia(filename);
-          console.log("Deleted", filename);
         }
         // Remove from local state
         setUploadedFiles((prev) => prev.filter((f) => f.url !== fileUrl));

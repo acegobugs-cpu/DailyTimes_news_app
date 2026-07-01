@@ -48,7 +48,6 @@ export default async function ArticlePage({ params }) {
     if (!article) {
       return (
         <main className="max-w-7xl mx-auto px-4 py-8">
-          {console.log(article)}
           <p className="text-center text-gray-700">Article not found.</p>
         </main>
       );

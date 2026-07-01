@@ -9,6 +9,7 @@ import (
 	"app/internal/domain/services"
 	"app/internal/pkg/config"
 	"app/internal/pkg/errors"
+	"app/internal/pkg/logger"
 
 	"github.com/google/uuid"
 )
@@ -56,9 +57,27 @@ type UserResponse struct {
 	Email    string    `json:"email"`
 }
 
+// ValidateInvitationRequest represents a request to validate an invitation token
+type ValidateInvitationRequest struct {
+	Token string `json:"token"`
+}
+
 func (h *AuthHandler) GetPendingInvitation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	token := r.URL.Query().Get("token")
+
+	// Support both GET (for backward compatibility) and POST (recommended)
+	var token string
+	if r.Method == http.MethodPost {
+		var req ValidateInvitationRequest
+		if err := h.handler.ParseJSON(r, &req); err != nil {
+			h.handler.RespondError(w, errors.ErrInvalidInput)
+			return
+		}
+		token = req.Token
+	} else {
+		token = r.URL.Query().Get("token")
+	}
+
 	if token == "" {
 		http.Error(w, "token is required", http.StatusBadRequest)
 		return
@@ -129,22 +148,36 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// 1. Extract Bearer Token from Authorization Header
-	cookie, err := r.Cookie("access_token")
-	if err != nil {
-		h.handler.RespondError(w, errors.ErrUnauthorized)
+	// Extract Bearer Token from Authorization Header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		logger.Info("empty header")
+		h.handler.RespondError(w, errors.ErrUnauthorized.W("Authorization header missing", "No Authorization header provided"))
 		return
 	}
-	accessToken := cookie.Value
 
-	// 2. Execute Service Layer Logic
+	// Check if it's a Bearer token
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		logger.Info("invalid format")
+		h.handler.RespondError(w, errors.ErrUnauthorized.W("Invalid authorization format", "Authorization header must be in the format 'Bearer <token>'"))
+		return
+	}
+
+	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+	if accessToken == "" {
+		logger.Info("missing token")
+		h.handler.RespondError(w, errors.ErrUnauthorized.W("Invalid authorization format", "Bearer token is missing"))
+		return
+	}
+
+	// Execute Service Layer Logic
 	user, err := h.authService.Me(ctx, accessToken)
 	if err != nil {
 		h.handler.RespondError(w, err)
 		return
 	}
 
-	// 3. Construct and write the presentation response
+	// Construct and write the presentation response
 	resp := UserResponse{
 		ID:       user.ID,
 		Username: user.Username,

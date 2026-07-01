@@ -8,19 +8,27 @@ async function forwardToBackend(
   body?: any,
   extraHeaders: Record<string, string> = {},
 ) {
-  // Forward all cookies from the original request
+  // 1. Forward original cookies (excluding access_token if you don't want the backend to see both)
   const cookieHeader = request.headers.get("cookie") || "";
 
-  // Merge cookie and any extra headers provided by the caller.
+  // 2. Extract the HttpOnly access_token cookie
+  const accessTokenCookie = request.cookies.get("access_token");
+  const token = accessTokenCookie?.value;
+
+  // 3. Initialize headers and merge extraHeaders
   const headers: Record<string, string> = {
     Cookie: cookieHeader,
     ...extraHeaders,
   };
 
+  // 4. Inject the Bearer Token if it exists
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   // Default to JSON when body is present and no Content-Type was specified,
   // but avoid setting Content-Type for FormData so the boundary is set automatically.
-  const isFormData =
-    typeof FormData !== "undefined" && body instanceof FormData;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
   if (body != null && !headers["Content-Type"] && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
@@ -31,26 +39,13 @@ async function forwardToBackend(
   };
 
   // Add body for methods that require it
-  if (body != null && ["POST", "PUT", "PATCH"].includes(method)) {
-    // If Content-Type is JSON, stringify objects (but allow passing already-stringified text).
-    if (
-      headers["Content-Type"] === "application/json" &&
-      typeof body !== "string"
-    ) {
+  if (body != null && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (headers["Content-Type"] === "application/json" && typeof body !== "string") {
       config.body = JSON.stringify(body);
     } else {
-      // For FormData or raw text, pass the body as-is.
       config.body = body;
     }
   }
-
-  // console.log("🔍 Proxy request:", {
-  //   path: fullPath,
-  //   method,
-  //   hasCookies: !!cookieHeader,
-  //   body: body ? "Present" : "None",
-  //   headers,
-  // });
 
   const backendResponse = await fetch(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/${fullPath}`,
@@ -97,20 +92,13 @@ export async function POST(
   const fullPath = path.join("/");
   const contentType = request.headers.get("content-type") || "";
 
-  console.log("📤 Proxy POST received:", {
-    fullPath,
-    contentType,
-    url: request.url,
-  });
-  console.log(request);
-
   let body: any = undefined;
   const extraHeaders: Record<string, string> = {};
 
   if (contentType.includes("multipart/form-data")) {
     // For file uploads: forward FormData directly and do not set Content-Type (boundary required)
     body = await request.formData();
-    extraHeaders["Contnet-Type"] = "multipart/form-data";
+    extraHeaders["Content-Type"] = "multipart/form-data"; //  Fixed
     // body = formData;
   } else if (contentType.includes("application/json")) {
     // For JSON requests: parse JSON and set Content-Type

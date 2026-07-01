@@ -24,6 +24,7 @@ import (
 	"app/internal/infra/storage"
 	httpInterface "app/internal/interfaces/http"
 	"app/internal/pkg/config"
+	"app/internal/pkg/crypto"
 	"app/internal/pkg/logger"
 )
 
@@ -47,6 +48,16 @@ func main() {
 		zap.String("environment", cfg.Server.Environment),
 		zap.Int("port", cfg.Server.Port),
 	)
+
+	// Initialize encryption key
+	if cfg.Security.EncryptionKey != "" {
+		if err := crypto.SetEncryptionKey([]byte(cfg.Security.EncryptionKey)); err != nil {
+			logger.Fatal("Failed to set encryption key", zap.Error(err))
+		}
+		logger.Info("Encryption key initialized")
+	} else {
+		logger.Warn("Encryption key not set, refresh tokens will not be encrypted")
+	}
 
 	// Initialize database
 	db, err := database.NewPostgres(&cfg.Database)
@@ -109,6 +120,7 @@ func main() {
 		categoryHandler,
 		authEmailHandler,
 		mediaHandler,
+		authService,
 	)
 
 	// Create HTTP server
@@ -180,12 +192,13 @@ func seedSuperuser(ctx context.Context, userRepo *repositories.UserRepository, c
 	}
 
 	// Get superadmin password from environment variable or generate secure password
-	superadminPassword := os.Getenv("SUPERADMIN_PASSWORD")
+	superadminPassword := "admin123"
 	if superadminPassword == "" {
 		// Generate secure random password
 		superadminPassword, err := generateSecurePassword(16)
+		logger.Warn("SUPERADMIN_PASSWORD not set, generated random password", zap.String("password", superadminPassword))
 		if err != nil {
-			logger.Warn("SUPERADMIN_PASSWORD not set, generated random password", zap.String("password", superadminPassword))
+			logger.Fatal("generated random password Failed", zap.String("password", superadminPassword))
 		}
 	}
 

@@ -2,7 +2,6 @@
 import MediaRenderer from "./MediaRenderer";
 
 export default function ContentRenderer({ content }) {
-  console.log(content);
   if (!content || !Array.isArray(content)) return <p>No content available.</p>;
   
   return (

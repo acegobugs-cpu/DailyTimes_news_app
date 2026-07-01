@@ -49,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data?? null);
-        console.log("api/me", user);
       } else {
         setUser(null);
       }
@@ -101,8 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser,
     authFetch,
   };
-
-  console.log("AUTH CONTEXT VALUE:", value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

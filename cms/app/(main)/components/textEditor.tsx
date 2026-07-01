@@ -192,7 +192,6 @@ export default function TextEditor({
   };
 
   if (!editor) return null;
-  console.log(editor.getJSON());
   return (
     <>
       <div className="text-black">
