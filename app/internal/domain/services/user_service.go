@@ -226,3 +226,20 @@ func (s *UserService) ListInvitations(ctx context.Context) ([]*entities.Invites,
 	}
 	return invitations, nil
 }
+
+// ListInvitationsPaginated lists invitations with pagination
+func (s *UserService) ListInvitationsPaginated(ctx context.Context, page, limit int) ([]*entities.Invites, int, error) {
+	offset := (page - 1) * limit
+	invitations, err := s.invitesRepo.ListPaginated(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, errors.ErrInternalServer.W("Failed to list invitations", "")
+	}
+	
+	// Get total count
+	total, err := s.invitesRepo.Count(ctx)
+	if err != nil {
+		return nil, 0, errors.ErrInternalServer.W("Failed to count invitations", "")
+	}
+	
+	return invitations, total, nil
+}

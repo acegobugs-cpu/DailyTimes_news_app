@@ -82,6 +82,57 @@ func (r *InvitesRepository) List(ctx context.Context) ([]*entities.Invites, erro
 	return invites, nil
 }
 
+// ListPaginated lists invites with pagination
+func (r *InvitesRepository) ListPaginated(ctx context.Context, limit, offset int) ([]*entities.Invites, error) {
+	query := `
+		SELECT id, fname, mname, lname, email, phone, status, roleIds, inviter_id
+		FROM invites ORDER BY created_at DESC LIMIT $1 OFFSET $2
+	`
+	rows, err := r.db.Query(ctx, query, limit, offset)
+	if err != nil {
+		errors.ErrBadRequest.W("", "").Log(ctx, err)
+		return nil, fmt.Errorf("failed to list invites: %w", err)
+	}
+	defer rows.Close()
+
+	var invites []*entities.Invites
+	for rows.Next() {
+		invite := &entities.Invites{}
+		err := rows.Scan(
+			&invite.ID,
+			&invite.Fname,
+			&invite.Mname,
+			&invite.Lname,
+			&invite.Email,
+			&invite.Phone,
+			&invite.Status,
+			&invite.RoleIDs,
+			&invite.InviterID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		invites = append(invites, invite)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate invites: %w", err)
+	}
+
+	return invites, nil
+}
+
+// Count returns the total count of invites
+func (r *InvitesRepository) Count(ctx context.Context) (int, error) {
+	query := `SELECT COUNT(*) FROM invites`
+	var count int
+	err := r.db.QueryRow(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count invites: %w", err)
+	}
+	return count, nil
+}
+
 func (r *InvitesRepository) GetInviteByID(ctx context.Context, id uuid.UUID) (*entities.Invites, error) {
 	query := `
 		SELECT id, fname, mname, lname, email, phone

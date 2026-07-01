@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"app/internal/domain/entities"
@@ -35,7 +36,7 @@ func (r *CategoryRepository) Create(ctx context.Context, category *entities.Cate
 	return nil
 }
 
-func (r *CategoryRepository) FindByID(ctx context.Context, id int64) (*entities.Category, error) {
+func (r *CategoryRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Category, error) {
 	query := `SELECT id, name, slug FROM categories WHERE id = $1`
 	category := &entities.Category{}
 	err := r.db.QueryRow(ctx, query, id).Scan(&category.ID, &category.Name, &category.Slug)
@@ -87,7 +88,7 @@ func (r *CategoryRepository) Update(ctx context.Context, category *entities.Cate
 	return nil
 }
 
-func (r *CategoryRepository) Delete(ctx context.Context, id int64) error {
+func (r *CategoryRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM categories WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {

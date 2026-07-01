@@ -77,7 +77,7 @@ func (r *ArticleRepository) Create(ctx context.Context, article *entities.Articl
 	return nil
 }
 
-func (r *ArticleRepository) FindByID(ctx context.Context, id int64) (*entities.Article, error) {
+func (r *ArticleRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Article, error) {
 	query := `
 		SELECT id, tag, media, published_at, updated_at
 		FROM articles WHERE id = $1
@@ -168,7 +168,7 @@ func (r *ArticleRepository) FindByTag(ctx context.Context, tag string) ([]*entit
 	return articles, nil
 }
 
-func (r *ArticleRepository) FindByCategory(ctx context.Context, categoryID int64) ([]*entities.Article, error) {
+func (r *ArticleRepository) FindByCategory(ctx context.Context, categoryID uuid.UUID) ([]*entities.Article, error) {
 	query := `
 		SELECT DISTINCT a.id, a.tag, a.media, a.published_at, a.updated_at
 		FROM articles a
@@ -292,7 +292,7 @@ func (r *ArticleRepository) Search(ctx context.Context, query string, limit, off
 	return articles, nil
 }
 
-func (r *ArticleRepository) AddCategory(ctx context.Context, articleID uuid.UUID, categoryID int64) error {
+func (r *ArticleRepository) AddCategory(ctx context.Context, articleID uuid.UUID, categoryID uuid.UUID) error {
 	query := `
 		INSERT INTO article_category (article_id, category_id)
 		VALUES ($1, $2)
@@ -305,7 +305,7 @@ func (r *ArticleRepository) AddCategory(ctx context.Context, articleID uuid.UUID
 	return nil
 }
 
-func (r *ArticleRepository) RemoveCategory(ctx context.Context, articleID, categoryID int64) error {
+func (r *ArticleRepository) RemoveCategory(ctx context.Context, articleID uuid.UUID, categoryID uuid.UUID) error {
 	query := `DELETE FROM article_category WHERE article_id = $1 AND category_id = $2`
 	err := r.db.Exec(ctx, query, articleID, categoryID)
 	if err != nil {
@@ -359,7 +359,7 @@ func (r *ArticleRepository) UpdateLocale(ctx context.Context, locale *entities.A
 	return nil
 }
 
-func (r *ArticleRepository) DeleteLocale(ctx context.Context, id int64) error {
+func (r *ArticleRepository) DeleteLocale(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM article_locale WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {

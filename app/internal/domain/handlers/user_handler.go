@@ -5,6 +5,7 @@ import (
 
 	"app/internal/domain/services"
 	"app/internal/pkg/errors"
+	"app/internal/pkg/pagination"
 )
 
 // UserHandler handles user HTTP requests
@@ -54,16 +55,27 @@ func (h *UserHandler) Invite(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) GetInvitationList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	// Deserialize JSON back into struct
-	pendingUser, err := h.userService.ListInvitations(ctx)
+
+	// Get pagination parameters from query string
+	page := r.URL.Query().Get("page")
+	limit := r.URL.Query().Get("limit")
+
+	pag := pagination.NewPaginationFromRequest(page, limit)
+
+	// Deserialize JSON back into struct with pagination
+	pendingUser, total, err := h.userService.ListInvitationsPaginated(ctx, pag.Page, pag.Limit)
 	if err != nil {
 		// The error was built inside the service, pass it back to the client
 		h.handler.RespondError(w, err)
 		return
 	}
 
-	// Return the data to the user's UI screen (omitting roles if they shouldn't see them)
-	h.handler.RespondJSON(w, http.StatusOK, pendingUser)
+	// Calculate pagination metadata
+	pag.CalculateLastPage(total)
+
+	// Return paginated response
+	response := pagination.NewPaginatedResponse(pendingUser, pag)
+	h.handler.RespondJSON(w, http.StatusOK, response)
 }
 
 // GetUser handles getting a user by ID

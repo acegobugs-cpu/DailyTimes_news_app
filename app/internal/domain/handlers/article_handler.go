@@ -28,7 +28,7 @@ func NewArticleHandler(articleService *services.ArticleService) *ArticleHandler 
 type CreateArticleRequest struct {
 	Tag          string                 `json:"tag"`
 	Media        map[string]interface{} `json:"media,omitempty"`
-	CategoryIDs  []int64                `json:"category_ids"`
+	CategoryIDs  []uuid.UUID            `json:"category_ids"`
 	Translations []ArticleLocaleRequest `json:"translations"`
 }
 

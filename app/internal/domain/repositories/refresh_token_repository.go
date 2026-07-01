@@ -45,7 +45,7 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token *entities.Ref
 	return nil
 }
 
-func (r *RefreshTokenRepository) FindByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+func (r *RefreshTokenRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.RefreshToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, created_at, expires_at, revoked, replaced_by_id, ip_address, user_agent
 		FROM refresh_tokens WHERE id = $1
@@ -97,7 +97,7 @@ func (r *RefreshTokenRepository) FindByTokenHash(ctx context.Context, tokenHash 
 	return token, nil
 }
 
-func (r *RefreshTokenRepository) FindByUserID(ctx context.Context, userID int64) ([]*entities.RefreshToken, error) {
+func (r *RefreshTokenRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.RefreshToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, created_at, expires_at, revoked, replaced_by_id, ip_address, user_agent
 		FROM refresh_tokens WHERE user_id = $1 ORDER BY created_at DESC
@@ -144,7 +144,7 @@ func (r *RefreshTokenRepository) Update(ctx context.Context, token *entities.Ref
 	return nil
 }
 
-func (r *RefreshTokenRepository) Delete(ctx context.Context, id int64) error {
+func (r *RefreshTokenRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM refresh_tokens WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {

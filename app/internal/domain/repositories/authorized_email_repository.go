@@ -42,7 +42,7 @@ func (r *AuthorizedEmailRepository) Create(ctx context.Context, email *entities.
 	return nil
 }
 
-func (r *AuthorizedEmailRepository) FindByID(ctx context.Context, id int64) (*entities.AuthorizedEmail, error) {
+func (r *AuthorizedEmailRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.AuthorizedEmail, error) {
 	query := `SELECT id, slug, email, used, created_at, inviter_id FROM authorized_emails WHERE id = $1`
 	email := &entities.AuthorizedEmail{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
@@ -152,7 +152,7 @@ func (r *AuthorizedEmailRepository) List(ctx context.Context) ([]*entities.Autho
 	return emails, nil
 }
 
-func (r *AuthorizedEmailRepository) MarkAsUsed(ctx context.Context, id int64) error {
+func (r *AuthorizedEmailRepository) MarkAsUsed(ctx context.Context, id uuid.UUID) error {
 	query := `UPDATE authorized_emails SET used = true WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {

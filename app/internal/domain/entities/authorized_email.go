@@ -8,7 +8,7 @@ import (
 
 // AuthorizedEmail represents an authorized email entity
 type AuthorizedEmail struct {
-	ID        int64      `json:"id"`
+	ID        uuid.UUID  `json:"id"`
 	Slug      string     `json:"slug"`
 	Email     string     `json:"email"`
 	Used      bool       `json:"used"`
@@ -19,6 +19,7 @@ type AuthorizedEmail struct {
 // NewAuthorizedEmail creates a new authorized email entity
 func NewAuthorizedEmail(email string) *AuthorizedEmail {
 	return &AuthorizedEmail{
+		ID:        uuid.New(),
 		Slug:      uuid.New().String(),
 		Email:     email,
 		Used:      false,

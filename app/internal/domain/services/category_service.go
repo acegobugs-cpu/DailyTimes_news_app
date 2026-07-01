@@ -6,6 +6,8 @@ import (
 	"app/internal/domain/entities"
 	"app/internal/domain/repositories"
 	"app/internal/pkg/errors"
+
+	"github.com/google/uuid"
 )
 
 // CategoryService handles category business logic
@@ -49,7 +51,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, name, slug string)
 }
 
 // GetCategoryByID retrieves a category by ID
-func (s *CategoryService) GetCategoryByID(ctx context.Context, id int64) (*entities.Category, error) {
+func (s *CategoryService) GetCategoryByID(ctx context.Context, id uuid.UUID) (*entities.Category, error) {
 	category, err := s.categoryRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errors.ErrResourceNotFound
@@ -75,7 +77,7 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, category *entities
 }
 
 // DeleteCategory deletes a category
-func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
+func (s *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	if err := s.categoryRepo.Delete(ctx, id); err != nil {
 		return errors.ErrInternalServer.W("Failed to delete category", "")
 	}

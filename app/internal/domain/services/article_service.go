@@ -25,7 +25,7 @@ func NewArticleService(articleRepo *repositories.ArticleRepository, categoryRepo
 }
 
 // CreateArticle creates a new article
-func (s *ArticleService) CreateArticle(ctx context.Context, article *entities.Article, categoryIDs []int64) error {
+func (s *ArticleService) CreateArticle(ctx context.Context, article *entities.Article, categoryIDs []uuid.UUID) error {
 	// Validate categories
 	for _, catID := range categoryIDs {
 		_, err := s.categoryRepo.FindByID(ctx, catID)
@@ -50,7 +50,7 @@ func (s *ArticleService) CreateArticle(ctx context.Context, article *entities.Ar
 }
 
 // GetArticleByID retrieves an article by ID
-func (s *ArticleService) GetArticleByID(ctx context.Context, id int64) (*entities.Article, error) {
+func (s *ArticleService) GetArticleByID(ctx context.Context, id uuid.UUID) (*entities.Article, error) {
 	article, err := s.articleRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errors.ErrResourceNotFound
@@ -68,7 +68,7 @@ func (s *ArticleService) GetArticleBySlug(ctx context.Context, slug, locale stri
 }
 
 // UpdateArticle updates an article
-func (s *ArticleService) UpdateArticle(ctx context.Context, article *entities.Article, categoryIDs *[]int64) error {
+func (s *ArticleService) UpdateArticle(ctx context.Context, article *entities.Article, categoryIDs *[]uuid.UUID) error {
 	if err := s.articleRepo.Update(ctx, article); err != nil {
 		return errors.ErrInternalServer.W("Failed to update article", "")
 	}
@@ -115,7 +115,7 @@ func (s *ArticleService) SearchArticles(ctx context.Context, query string, limit
 }
 
 // GetArticlesByCategory retrieves articles by category
-func (s *ArticleService) GetArticlesByCategory(ctx context.Context, categoryID int64, limit, offset int) ([]*entities.Article, error) {
+func (s *ArticleService) GetArticlesByCategory(ctx context.Context, categoryID uuid.UUID, limit, offset int) ([]*entities.Article, error) {
 	_, err := s.categoryRepo.FindByID(ctx, categoryID)
 	if err != nil {
 		return nil, errors.ErrResourceNotFound
@@ -145,7 +145,7 @@ func (s *ArticleService) UpdateArticleLocale(ctx context.Context, locale *entiti
 }
 
 // DeleteArticleLocale deletes an article locale
-func (s *ArticleService) DeleteArticleLocale(ctx context.Context, id int64) error {
+func (s *ArticleService) DeleteArticleLocale(ctx context.Context, id uuid.UUID) error {
 	if err := s.articleRepo.DeleteLocale(ctx, id); err != nil {
 		return errors.ErrInternalServer.W("Failed to delete article locale", "")
 	}

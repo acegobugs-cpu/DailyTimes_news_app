@@ -45,8 +45,8 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 
 func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
 	query := `
-		SELECT id, fname, lname, uname, email, h_password, created_at
-		FROM users WHERE id = $1
+		SELECT id, fname, lname, uname, email, h_password, created_at, deleted_at
+		FROM users WHERE id = $1 AND deleted_at IS NULL
 	`
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
@@ -57,6 +57,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.
 		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
+		&user.DeletedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -70,8 +71,8 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.
 
 func (r *UserRepository) FindByUID(ctx context.Context, uid string) (*entities.User, error) {
 	query := `
-		SELECT id, fname, lname, uname, email, h_password, created_at
-		FROM users WHERE uid = $1
+		SELECT id, fname, lname, uname, email, h_password, created_at, deleted_at
+		FROM users WHERE uid = $1 AND deleted_at IS NULL
 	`
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, uid).Scan(
@@ -82,6 +83,7 @@ func (r *UserRepository) FindByUID(ctx context.Context, uid string) (*entities.U
 		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
+		&user.DeletedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -95,19 +97,19 @@ func (r *UserRepository) FindByUID(ctx context.Context, uid string) (*entities.U
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entities.User, error) {
 	query := `
-		SELECT id, fname, lname, uname, email, h_password, created_at
-		FROM users WHERE email = $1
+		SELECT id, fname, lname, uname, email, h_password, created_at, deleted_at
+		FROM users WHERE email = $1 AND deleted_at IS NULL
 	`
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
-
 		&user.FirstName,
 		&user.LastName,
 		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
+		&user.DeletedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -121,8 +123,8 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entiti
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*entities.User, error) {
 	query := `
-		SELECT id, fname, lname, uname, email, h_password, created_at
-		FROM users WHERE uname = $1
+		SELECT id, fname, lname, uname, email, h_password, created_at, deleted_at
+		FROM users WHERE uname = $1 AND deleted_at IS NULL
 	`
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, username).Scan(
@@ -133,6 +135,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
+		&user.DeletedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -146,8 +149,8 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 
 func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, emailOrUsername string) (*entities.User, error) {
 	query := `
-		SELECT id, fname, lname, uname, email, phone,  h_password
-		FROM users WHERE email = $1 OR uname = $1
+		SELECT id, fname, lname, uname, email, phone, h_password, created_at, deleted_at
+		FROM users WHERE (email = $1 OR uname = $1) AND deleted_at IS NULL
 	`
 	user := &entities.User{}
 	err := r.db.QueryRow(ctx, query, emailOrUsername).Scan(
@@ -158,6 +161,8 @@ func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, emailOrUsern
 		&user.Email,
 		&user.Phone,
 		&user.PasswordHash,
+		&user.CreatedAt,
+		&user.DeletedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -191,10 +196,30 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM users WHERE id = $1`
+	query := `UPDATE users SET deleted_at = NOW() WHERE id = $1`
 	err := r.db.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
+	}
+	return nil
+}
+
+// SoftDelete marks a user as deleted without removing from database
+func (r *UserRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	query := `UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	err := r.db.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to soft delete user: %w", err)
+	}
+	return nil
+}
+
+// Restore restores a soft deleted user
+func (r *UserRepository) Restore(ctx context.Context, id uuid.UUID) error {
+	query := `UPDATE users SET deleted_at = NULL WHERE id = $1`
+	err := r.db.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to restore user: %w", err)
 	}
 	return nil
 }
