@@ -94,7 +94,7 @@ func (h *AuthHandler) GetPendingInvitation(w http.ResponseWriter, r *http.Reques
 }
 
 // Register handles user registration
-func (h *AuthHandler) Signin(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req SigninRequest
 	if err := h.handler.ParseJSON(r, &req); err != nil {
 		h.handler.RespondError(w, errors.ErrInvalidInput)
@@ -139,10 +139,31 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.handler.RespondJSON(w, http.StatusOK, map[string]any{
-		"user":   user,
-		"tokens": tokens,
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    tokens.AccessToken,
+		Path:     "/",
+		HttpOnly: true, // Hide from malicious client scripts
+		Secure:   h.config.Server.Environment == "production",
+		SameSite: http.SameSiteLaxMode,
 	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    tokens.RefreshToken,
+		Path:     "/",
+		HttpOnly: true, // Hide from malicious client scripts
+		Secure:   h.config.Server.Environment == "production",
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	res := UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	h.handler.RespondJSON(w, http.StatusOK, res)
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {

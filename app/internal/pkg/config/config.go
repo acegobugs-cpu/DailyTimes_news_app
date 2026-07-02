@@ -119,7 +119,8 @@ type SecurityConfig struct {
 	PasswordRequireLowercase bool     `mapstructure:"password_require_lowercase"`
 	PasswordRequireNumber    bool     `mapstructure:"password_require_number"`
 	PasswordRequireSpecial   bool     `mapstructure:"password_require_special"`
-	EncryptionKey            string   `mapstructure:"encryption_key"` // For encrypting sensitive data like refresh tokens
+	EncryptionKey            string   `mapstructure:"encryption_key"`  // For encrypting sensitive data like refresh tokens
+	CSRFSecretKey            string   `mapstructure:"csrf_secret_key"` // For CSRF token generation and validation
 }
 
 func Load(configPath string) (*Config, error) {
@@ -222,6 +223,7 @@ func setDefaults() {
 	viper.SetDefault("ratelimit.auth_requests_per_minute", 10)
 	viper.SetDefault("ratelimit.global_requests_per_minute", 100)
 	viper.SetDefault("ratelimit.login_requests_per_minute", 5)
+	viper.SetDefault("ratelimit.register_requests_per_minute", 5)
 	viper.SetDefault("ratelimit.refresh_requests_per_minute", 20)
 
 	// Security defaults
@@ -232,7 +234,9 @@ func setDefaults() {
 	viper.SetDefault("security.password_require_lowercase", true)
 	viper.SetDefault("security.password_require_number", true)
 	viper.SetDefault("security.password_require_special", false)
-	viper.SetDefault("security.encryption_key", "") // Must be set via environment variable in production
+	viper.SetDefault("security.encryption_key", "")  // Must be set via environment variable in production
+	viper.SetDefault("security.csrf_secret_key", "") // Must be set via environment variable in production
+
 }
 
 // Validate validates the configuration
@@ -243,6 +247,13 @@ func (c *Config) Validate() error {
 	}
 	if len(c.JWT.Secret) < 32 {
 		return fmt.Errorf("JWT secret must be at least 32 characters")
+	}
+
+	if c.Security.EncryptionKey == "" {
+		return fmt.Errorf("encryption key is required (set APP_SECURITY_ENCRYPTION_KEY)")
+	}
+	if len(c.Security.EncryptionKey) != 32 {
+		return fmt.Errorf("encryption key must be exactly 32 characters")
 	}
 
 	if c.Server.Environment == "production" && c.Security.EncryptionKey == "" {

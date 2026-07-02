@@ -11,7 +11,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { setUser, isAuthenticated, refreshUser } = useAuth();
+  const { setUser, isAuthenticated, refreshUser, authFetch } = useAuth();
   const router = useRouter();
 
   // Redirect if already authenticated
@@ -27,7 +27,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await authFetch("/api/proxy/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

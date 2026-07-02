@@ -14,6 +14,7 @@ import (
 	"app/internal/domain/handlers"
 	"app/internal/domain/services"
 	"app/internal/pkg/config"
+	"app/internal/pkg/logger"
 	"app/internal/pkg/middleware"
 )
 
@@ -45,7 +46,10 @@ func NewRouter(
 	r := chi.NewRouter()
 
 	// Initialize CSRF protection
-	csrfProtection := middleware.NewCSRFProtection(zap.L())
+	csrfProtection, err := middleware.NewCSRFProtection(zap.L(), []byte(config.Security.CSRFSecretKey), config.Server.Environment == "production")
+	if err != nil {
+		logger.Fatal("Failed to initialize CSRF protection", zap.Error(err))
+	}
 
 	// Initialize authentication middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -99,23 +103,28 @@ func (r *Router) setupRoutes() {
 		// Health check
 		router.Get("/health", r.healthCheck)
 
-		// CSRF token endpoint (no CSRF protection needed to get token)
-		router.Get("/csrf/token", r.csrfProtection.GetCSRFTokenHandler)
-
 		// Auth routes with per-endpoint rate limiting
-		router.With(httprate.LimitByIP(r.config.RateLimit.AuthRequestsPerMinute, 1*time.Minute)).Route("/auth", func(router chi.Router) {
-			// Apply CSRF protection to state-changing auth routes
-			router.With(httprate.LimitByIP(r.config.RateLimit.LoginRequestsPerMinute, 1*time.Minute)).Post("/login", r.authHandler.Login)
-			router.With(r.csrfProtection.Middleware).With(httprate.LimitByIP(r.config.RateLimit.RefreshRequestsPerMinute, 1*time.Minute)).Post("/refresh", r.authHandler.RefreshToken)
-			router.With(r.csrfProtection.Middleware).With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Post("/signin", r.authHandler.Signin)
-			router.With(r.csrfProtection.Middleware).Post("/logout", r.authHandler.Logout)
-			router.With(r.csrfProtection.Middleware).Post("/logout-all", r.authHandler.LogoutAll)
-			router.With(r.csrfProtection.Middleware).Post("/verify", r.authHandler.VerifyToken)
+		router.Route("/auth", func(router chi.Router) {
+			router.Use(httprate.LimitByIP(r.config.RateLimit.AuthRequestsPerMinute, 1*time.Minute))
 
-			// GET requests don't need CSRF
-			router.With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Get("/register", r.authHandler.GetPendingInvitation)
-			router.With(r.csrfProtection.Middleware).With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Post("/register", r.authHandler.GetPendingInvitation)
-			router.Get("/me", r.authHandler.Me)
+			//Routes That don't need CSRF protection
+			router.Group(func(router chi.Router) {
+				router.Get("/csrf/token", r.csrfProtection.GetCSRFTokenHandler)
+				router.Get("/me", r.authHandler.Me)
+				router.With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Get("/invitation", r.authHandler.GetPendingInvitation)
+
+			})
+
+			router.Group(func(router chi.Router) {
+				router.Use(r.csrfProtection.Middleware) // Apply CSRF protection
+				router.With(httprate.LimitByIP(r.config.RateLimit.LoginRequestsPerMinute, 1*time.Minute)).Post("/login", r.authHandler.Login)
+				router.With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Post("/register", r.authHandler.Register)
+				router.With(httprate.LimitByIP(r.config.RateLimit.RefreshRequestsPerMinute, 1*time.Minute)).Post("/refresh", r.authHandler.RefreshToken)
+				router.Post("/logout", r.authHandler.Logout)
+				router.Post("/logout-all", r.authHandler.LogoutAll)
+				router.Post("/verify", r.authHandler.VerifyToken)
+			})
+			// Apply CSRF protection to state-changing auth routes
 		})
 
 		// User routes with CSRF protection for state-changing operations

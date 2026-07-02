@@ -1,183 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
+import { client } from "@/app/lib/client";
 
-// Helper function to forward request to backend
-async function forwardToBackend(
-  fullPath: string,
-  request: NextRequest,
-  method: string = "GET",
-  body?: any,
-  extraHeaders: Record<string, string> = {},
-) {
-  // 1. Forward original cookies (excluding access_token if you don't want the backend to see both)
-  const cookieHeader = request.headers.get("cookie") || "";
+async function proxyHandler(req: NextRequest) {
+  const targetPath = req.nextUrl.pathname.replace(/^\/api\/proxy/, "");
+  const searchParams = req.nextUrl.search; 
+  const finalPath = `${targetPath}${searchParams}`;
 
-  // 2. Extract the HttpOnly access_token cookie
-  const accessTokenCookie = request.cookies.get("access_token");
-  const token = accessTokenCookie?.value;
+  const method = req.method.toUpperCase();
+  const isMutation = ["POST", "PUT", "DELETE", "PATCH"].includes(method);
 
-  // 3. Initialize headers and merge extraHeaders
-  const headers: Record<string, string> = {
-    Cookie: cookieHeader,
-    ...extraHeaders,
-  };
+  // 1. FIX: Manually pull the CSRF token directly from the incoming browser request headers
+  const incomingCsrfToken = req.headers.get("X-CSRF-Token") || undefined;
 
-  // 4. Inject the Bearer Token if it exists
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
-  // Default to JSON when body is present and no Content-Type was specified,
-  // but avoid setting Content-Type for FormData so the boundary is set automatically.
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
-  if (body != null && !headers["Content-Type"] && !isFormData) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const config: RequestInit = {
-    method,
-    headers,
-  };
-
-  // Add body for methods that require it
-  if (body != null && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-    if (headers["Content-Type"] === "application/json" && typeof body !== "string") {
-      config.body = JSON.stringify(body);
-    } else {
-      config.body = body;
-    }
-  }
-
-  const backendResponse = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/${fullPath}`,
-    config,
-  );
-
-  if (backendResponse.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
-
-  const contentType = backendResponse.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const data = await backendResponse.json();
-    return NextResponse.json(data, { status: backendResponse.status });
-  } else {
-    const textData = await backendResponse.text();
-    return new NextResponse(textData, {
-      status: backendResponse.status,
-      headers: contentType ? { "Content-Type": contentType } : undefined,
-    });
-  }
-}
-
-// GET - For fetching data
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  const fullPath = path.join("/");
-  // Need to preserve query parameters
-  const searchParams = request.nextUrl.searchParams.toString();
-  const backendPath = searchParams ? `${fullPath}?${searchParams}` : fullPath;
-
-  return forwardToBackend(backendPath, request, "GET");
-}
-
-// POST - For creating data
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  const fullPath = path.join("/");
-  const contentType = request.headers.get("content-type") || "";
 
   let body: any = undefined;
-  const extraHeaders: Record<string, string> = {};
-
-  if (contentType.includes("multipart/form-data")) {
-    // For file uploads: forward FormData directly and do not set Content-Type (boundary required)
-    body = await request.formData();
-    extraHeaders["Content-Type"] = "multipart/form-data"; //  Fixed
-    // body = formData;
-  } else if (contentType.includes("application/json")) {
-    // For JSON requests: parse JSON and set Content-Type
-    body = await request.json();
-    extraHeaders["Content-Type"] = "application/json";
-  } else {
-    // For other types: forward raw text and preserve content-type if present
-    body = await request.text();
-    if (contentType) {
-      extraHeaders["Content-Type"] = contentType;
-    }
-  }
-
-  return forwardToBackend(fullPath, request, "POST", body, extraHeaders);
-}
-
-// PUT - For updating/replacing data
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  const fullPath = path.join("/");
-  const contentType = request.headers.get("content-type") || "";
-
-  let body: any = undefined;
-  const extraHeaders: Record<string, string> = {};
-
-  if (contentType.includes("multipart/form-data")) {
-    // For file uploads via PUT
-    const formData = await request.formData();
-    body = formData;
-  } else if (contentType.includes("application/json")) {
-    body = await request.json();
-    extraHeaders["Content-Type"] = "application/json";
-  } else {
-    body = await request.text();
-    if (contentType) {
-      extraHeaders["Content-Type"] = contentType;
-    }
-  }
-
-  return forwardToBackend(fullPath, request, "PUT", body, extraHeaders);
-}
-
-// PATCH - For partial updates
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  const fullPath = path.join("/");
-  const body = await request.json();
-  return forwardToBackend(fullPath, request, "PATCH", body);
-}
-
-// DELETE - For deleting data
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  const fullPath = path.join("/");
-  // Missing: Parse request body if present
-  const contentType = request.headers.get("content-type") || "";
-  let body: any = undefined;
-
-  if (contentType.includes("application/json")) {
+  if (isMutation && req.headers.get("content-type")?.includes("application/json")) {
     try {
-      body = await request.json();
-    } catch (e) {
-      // Ignore if no body
+      body = await req.json();
+    } catch {
+      // Handle empty body
     }
   }
 
-  return forwardToBackend(fullPath, request, "DELETE", body);
+  try {
+    let apiRes: Response;
+    if (isMutation) {
+      const options = { csrfToken: incomingCsrfToken };
+      if (method === "POST") apiRes = await client.post(finalPath, body, options);
+      else if (method === "PUT") apiRes = await client.put(finalPath, body, options);
+      else if (method === "DELETE") apiRes = await client.delete(finalPath, options);
+      else apiRes = await client.patch(finalPath, body, options);
+    } else {
+      apiRes = await client.get(finalPath);
+    }
+
+    const resHeaders = new Headers(apiRes.headers);
+    const setCookie = apiRes.headers.get("set-cookie");
+    if (setCookie) {
+      resHeaders.set("Set-Cookie", setCookie);
+    }
+
+    return new NextResponse(apiRes.body, {
+      status: apiRes.status,
+      headers: resHeaders,
+    });
+
+  } catch (error) {
+    console.error(`Proxy failure on ${method} ${finalPath}:`, error);
+    return NextResponse.json({ error: "Internal Gateway Error" }, { status: 502 });
+  }
 }
 
-// Handle OPTIONS for CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 200 });
-}
+export {
+  proxyHandler as GET,
+  proxyHandler as POST,
+  proxyHandler as PUT,
+  proxyHandler as DELETE,
+  proxyHandler as PATCH,
+};

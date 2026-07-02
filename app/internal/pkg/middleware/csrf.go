@@ -1,156 +1,172 @@
 package middleware
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
-	"encoding/hex"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"strings"
-	"sync"
+	"time"
 
-	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
-// CSRFProtection provides CSRF protection middleware
+const (
+	csrfCookieName = "csrf_session"
+	csrfHeaderName = "X-CSRF-Token"
+	csrfTokenTTL   = 1 * time.Hour
+)
+
 type CSRFProtection struct {
-	logger *zap.Logger
-	tokens map[string]string
-	mu     sync.RWMutex
+	logger    *zap.Logger
+	secretKey []byte
+	isProd    bool
 }
 
-// NewCSRFProtection creates a new CSRF protection middleware
-func NewCSRFProtection(logger *zap.Logger) *CSRFProtection {
+// NewCSRFProtection creates a stateless, cryptographically secure CSRF middleware.
+// The secretKey MUST be 32 bytes and persistent across server restarts (read from config).
+func NewCSRFProtection(logger *zap.Logger, secretKey []byte, isProd bool) (*CSRFProtection, error) {
+	if len(secretKey) != 32 {
+		return nil, fmt.Errorf("CSRF secret key must be exactly 32 bytes")
+	}
 	return &CSRFProtection{
-		logger: logger,
-		tokens: make(map[string]string),
-	}
+		logger:    logger,
+		secretKey: secretKey,
+		isProd:    isProd,
+	}, nil
 }
 
-// GenerateToken generates a new CSRF token
-func (c *CSRFProtection) GenerateTokenForClient(clientID string) string {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		c.logger.Error("Failed to generate CSRF token", zap.Error(err))
-		return ""
-	}
-	token := hex.EncodeToString(b)
-	c.mu.Lock()
-	c.tokens[token] = clientID
-	c.mu.Unlock()
-
-	return token
-}
-
-// clientIDFromRequest extracts a context-specific identifier for the client.
-// Prefer an existing session cookie if present, otherwise fall back to remote
-// address + user-agent to provide a best-effort binding.
-func clientIDFromRequest(r *http.Request) string {
-	if r == nil {
-		return ""
-	}
-	if cookie, err := r.Cookie("session_id"); err == nil {
-		return cookie.Value
-	}
-	return r.RemoteAddr + "|" + r.UserAgent()
-}
-
-// ValidateToken validates a CSRF token for the given request context
-func (c *CSRFProtection) ValidateToken(token string, r *http.Request) bool {
-	if token == "" {
-		return false
-	}
-	clientID := clientIDFromRequest(r)
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	stored, ok := c.tokens[token]
-	if !ok {
-		return false
-	}
-	// token is valid only if the clientID that requested it matches
-	return stored == clientID
-}
-
-// RevokeToken revokes a CSRF token
-func (c *CSRFProtection) RevokeToken(token string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.tokens, token)
-}
-
-// Middleware returns the CSRF protection middleware
+// Middleware handles stateless validation of state-changing requests
 func (c *CSRFProtection) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip CSRF for GET, HEAD, OPTIONS, TRACE
+		// 1. Skip safe HTTP methods
 		if r.Method == http.MethodGet || r.Method == http.MethodHead ||
 			r.Method == http.MethodOptions || r.Method == http.MethodTrace {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// For state-changing methods, validate CSRF token
-		token := r.Header.Get("X-CSRF-Token")
-		if token == "" {
-			// Also check form field
-			token = r.FormValue("csrf_token")
+		// 2. Extract token from Header or Form
+		tokenStr := r.Header.Get(csrfHeaderName)
+		if tokenStr == "" {
+			tokenStr = r.FormValue("csrf_token")
 		}
 
-		if token == "" || !c.ValidateToken(token, r) {
-			c.logger.Warn("CSRF token validation failed",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path))
-			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
+		// 3. Extract the underlying baseline session cookie
+		cookie, err := r.Cookie(csrfCookieName)
+		if err != nil || cookie.Value == "" {
+			c.logger.Warn("CSRF validation failed: missing session cookie", zap.String("path", r.URL.Path))
+			http.Error(w, "Missing CSRF session context", http.StatusForbidden)
 			return
 		}
 
-		// Revoke token after successful validation (one-time use)
-		c.RevokeToken(token)
+		// 4. Validate the cryptographic token against the cookie value
+		if !c.verifyToken(tokenStr, cookie.Value) {
+			c.logger.Warn("CSRF validation failed: invalid or expired token", zap.String("path", r.URL.Path))
+			http.Error(w, "Invalid or expired CSRF token", http.StatusForbidden)
+			return
+		}
 
 		next.ServeHTTP(w, r)
 	})
 }
 
-// SetCSRFTokenHeader sets the CSRF token in response header bound to request
-func (c *CSRFProtection) SetCSRFTokenHeader(w http.ResponseWriter, r *http.Request) {
-	token := c.GenerateTokenForClient(clientIDFromRequest(r))
-	if token != "" {
-		w.Header().Set("X-CSRF-Token", token)
-	}
-}
-
-// GetCSRFTokenHandler returns a handler to get a CSRF token
+// GetCSRFTokenHandler issues a secure session cookie alongside its matching token variant
 func (c *CSRFProtection) GetCSRFTokenHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	token := c.GenerateTokenForClient(clientIDFromRequest(r))
-	if token == "" {
-		http.Error(w, "Failed to generate CSRF token", http.StatusInternalServerError)
+	// 1. Establish or reuse a robust session tracking identity
+	var sessionID string
+	if cookie, err := r.Cookie(csrfCookieName); err == nil && cookie.Value != "" {
+		sessionID = cookie.Value
+	} else {
+		b := make([]byte, 16)
+		if _, err := rand.Read(b); err != nil {
+			c.logger.Error("Failed to generate CSRF session ID", zap.Error(err))
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		sessionID = base64.RawURLEncoding.EncodeToString(b)
+	}
+
+	// 2. Issue the hardened tracking Cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    sessionID,
+		Path:     "/",
+		HttpOnly: true, // Hide from malicious client scripts
+		Secure:   c.isProd,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// 3. Mint an explicitly signed token bound with an exact expiration timestamp
+	tokenStr, err := c.generateToken(sessionID)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"csrf_token":"` + token + `"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{"csrf_token": tokenStr})
 }
 
-// ApplyCSRFToRoutes applies CSRF protection to specific routes
-func (c *CSRFProtection) ApplyCSRFToRoutes(router chi.Router, protectedPaths []string) {
-	for _, path := range protectedPaths {
-		router.With(c.Middleware).Route(path, func(r chi.Router) {
-			// All routes under this path will be CSRF protected
-		})
+// generateToken constructs a signed payload: Base64(expiry_bytes . random_salt . signature)
+func (c *CSRFProtection) generateToken(sessionID string) (string, error) {
+	expiryBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(expiryBytes, uint64(time.Now().Add(csrfTokenTTL).Unix()))
+
+	salt := make([]byte, 8)
+	if _, err := rand.Read(salt); err != nil {
+		c.logger.Error("Failed to seed CSRF token salt", zap.Error(err))
+		return "", err
 	}
+
+	// Sign the composite fields together with the specific session constraint
+	mac := hmac.New(sha256.New, c.secretKey)
+	mac.Write(expiryBytes)
+	mac.Write(salt)
+	mac.Write([]byte(sessionID))
+	signature := mac.Sum(nil)
+
+	// Assemble structural payload components
+	payload := append(expiryBytes, salt...)
+	payload = append(payload, signature...)
+
+	return base64.RawURLEncoding.EncodeToString(payload), nil
 }
 
-// IsProtectedPath checks if a path should be CSRF protected
-func (c *CSRFProtection) IsProtectedPath(path string, protectedPaths []string) bool {
-	for _, protected := range protectedPaths {
-		if strings.HasPrefix(path, protected) {
-			return true
-		}
+// verifyToken checks if the signed token matches up with structural parameters, time restrictions, and signatures
+func (c *CSRFProtection) verifyToken(tokenStr, sessionID string) bool {
+	payload, err := base64.RawURLEncoding.DecodeString(tokenStr)
+	if err != nil || len(payload) < 48 { // 8 (expiry) + 8 (salt) + 32 (sha256 signature)
+		return false
 	}
-	return false
+
+	expiryBytes := payload[:8]
+	salt := payload[8:16]
+	receivedSignature := payload[16:]
+
+	// 1. Time Verification
+	expiryUnix := binary.BigEndian.Uint64(expiryBytes)
+	if time.Now().Unix() > int64(expiryUnix) {
+		return false // Token expired
+	}
+
+	// 2. Recalculate Expected Signature securely
+	mac := hmac.New(sha256.New, c.secretKey)
+	mac.Write(expiryBytes)
+	mac.Write(salt)
+	mac.Write([]byte(sessionID))
+	expectedSignature := mac.Sum(nil)
+
+	// 3. Constant time compare to mitigate timing side-channel attacks
+	return subtle.ConstantTimeCompare(receivedSignature, expectedSignature) == 1
 }
