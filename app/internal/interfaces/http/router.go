@@ -16,6 +16,7 @@ import (
 	"app/internal/pkg/config"
 	"app/internal/pkg/logger"
 	"app/internal/pkg/middleware"
+	"app/internal/pkg/token"
 )
 
 // Router represents the HTTP router
@@ -42,6 +43,7 @@ func NewRouter(
 	authEmailHandler *handlers.AuthorizedEmailHandler,
 	mediaHandler *handlers.MediaHandler,
 	authService *services.AuthService,
+	tokenManager *token.TokenManager,
 ) *Router {
 	r := chi.NewRouter()
 
@@ -52,7 +54,7 @@ func NewRouter(
 	}
 
 	// Initialize authentication middleware
-	authMiddleware := middleware.NewAuthMiddleware(authService)
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
 
 	router := &Router{
 		router:           r,
@@ -110,7 +112,7 @@ func (r *Router) setupRoutes() {
 			//Routes That don't need CSRF protection
 			router.Group(func(router chi.Router) {
 				router.Get("/csrf/token", r.csrfProtection.GetCSRFTokenHandler)
-				router.Get("/me", r.authHandler.Me)
+				router.With(r.authMiddleware.Middleware).Get("/me", r.authHandler.Me)
 				router.With(httprate.LimitByIP(r.config.RateLimit.RegisterRequestsPerMinute, 1*time.Minute)).Get("/invitation", r.authHandler.GetPendingInvitation)
 
 			})

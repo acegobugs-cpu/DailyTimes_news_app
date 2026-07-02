@@ -26,6 +26,7 @@ import (
 	"app/internal/pkg/config"
 	"app/internal/pkg/crypto"
 	"app/internal/pkg/logger"
+	"app/internal/pkg/token"
 )
 
 func main() {
@@ -95,6 +96,9 @@ func main() {
 		logger.Warn("Failed to seed superuser", zap.Error(err))
 	}
 
+	// Initialize token manager
+	tokenManager := token.NewTokenManager(cfg.JWT.Secret, cfg.JWT.AccessDuration, cfg.JWT.Issuer)
+
 	// Initialize services
 	userService := services.NewUserService(userRepo, invitesRepo, mail, cache, cfg)
 	authService := services.NewAuthService(userRepo, invitesRepo, cache, cfg)
@@ -121,6 +125,7 @@ func main() {
 		authEmailHandler,
 		mediaHandler,
 		authService,
+		tokenManager,
 	)
 
 	// Create HTTP server

@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
+	"app/internal/domain/appContext"
 	"app/internal/domain/services"
 	"app/internal/pkg/config"
 	"app/internal/pkg/errors"
-	"app/internal/pkg/logger"
 
 	"github.com/google/uuid"
 )
@@ -169,30 +169,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Extract Bearer Token from Authorization Header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		logger.Info("empty header")
-		h.handler.RespondError(w, errors.ErrUnauthorized.W("Authorization header missing", "No Authorization header provided"))
-		return
-	}
-
-	// Check if it's a Bearer token
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		logger.Info("invalid format")
-		h.handler.RespondError(w, errors.ErrUnauthorized.W("Invalid authorization format", "Authorization header must be in the format 'Bearer <token>'"))
-		return
-	}
-
-	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
-	if accessToken == "" {
-		logger.Info("missing token")
-		h.handler.RespondError(w, errors.ErrUnauthorized.W("Invalid authorization format", "Bearer token is missing"))
+	// 1. Pull the UserID securely out of the context (set by your middleware)
+	userID, ok := appContext.GetUserID(ctx)
+	if !ok || userID == uuid.Nil {
+		h.handler.RespondError(w, errors.ErrUnauthorized.W("Unauthorized Access", "No user context found"))
 		return
 	}
 
 	// Execute Service Layer Logic
-	user, err := h.authService.Me(ctx, accessToken)
+	user, err := h.authService.Me(ctx, userID)
 	if err != nil {
 		h.handler.RespondError(w, err)
 		return
@@ -218,7 +203,12 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := h.authService.RefreshAccessToken(r.Context(), req.RefreshToken)
+	// 1. Extract the User-Agent header
+	userAgent := r.Header.Get("User-Agent")
+	// 2. Extract the IP Address (taking proxies/load balancers into account)
+	ipAddress := h.readUserIP(r)
+
+	tokens, err := h.authService.RefreshAccessToken(r.Context(), req.RefreshToken, userAgent, ipAddress)
 	if err != nil {
 		h.handler.RespondError(w, err)
 		return
